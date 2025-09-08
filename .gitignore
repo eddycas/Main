@@ -1,0 +1,82 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+generated_plugin_registrant.dart
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/gradle.properties
+android/gradle/
+android/keystore/
+*.iml
+
+# iOS
+ios/Flutter/Flutter.podspec
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/build/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Flutter/Flutter.framework
+macos/build/
+
+# Windows / Linux
+windows/flutter/
+windows/runner/Debug/
+windows/runner/Release/
+linux/flutter/
+linux/build/
+
+# Web
+/web/.dart_tool/
+web/build/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+
+# System / personal
+*.log
+*.lock
+*.swp
+*.DS_Store
+*.bak
+*.tmp
+*.old
+*.orig
+*.so
+*.a
+*.o
+*.exe
+*.pyc
+*.pyo
+*.class
+*.jar
+*.war
+*.keystore
+*.pem
+*.p12
+*.crt
+*.der
+*.cert
+*.key
+
+# Node / JS (if any)
+node_modules/
+
+# Ignore your temporary or large folder
+Danacid/
