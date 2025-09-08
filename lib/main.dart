@@ -5,21 +5,28 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rewarded Ad Example',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: AdsScreen(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        primarySwatch: Colors.blue,
+      ),
+      home: const AdsScreen(),
     );
   }
 }
 
 class AdsScreen extends StatefulWidget {
+  const AdsScreen({super.key});
+
   @override
   _AdsScreenState createState() => _AdsScreenState();
 }
@@ -46,7 +53,7 @@ class _AdsScreenState extends State<AdsScreen> {
 
     _topBanner = BannerAd(
       adUnitId: adUnitId,
-      request: AdRequest(),
+      request: const AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (_) => print('Top banner loaded'),
@@ -65,7 +72,7 @@ class _AdsScreenState extends State<AdsScreen> {
 
     _bottomBanner = BannerAd(
       adUnitId: adUnitId,
-      request: AdRequest(),
+      request: const AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (_) => print('Bottom banner loaded'),
@@ -84,7 +91,7 @@ class _AdsScreenState extends State<AdsScreen> {
 
     RewardedAd.load(
       adUnitId: adUnitId,
-      request: AdRequest(),
+      request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           print('Rewarded ad loaded');
@@ -128,11 +135,11 @@ class _AdsScreenState extends State<AdsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Rewarded Ad Example')),
+      appBar: AppBar(title: const Text('Rewarded Ad Example')),
       body: Column(
         children: [
           if (_topBanner != null)
-            Container(
+            SizedBox(
               width: _topBanner!.size.width.toDouble(),
               height: _topBanner!.size.height.toDouble(),
               child: AdWidget(ad: _topBanner!),
@@ -143,17 +150,17 @@ class _AdsScreenState extends State<AdsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('Solve equations: $_solvedEquations/3'),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _checkAndShowRewardedAd,
-                    child: Text('Solve Equation'),
+                    child: const Text('Solve Equation'),
                   ),
                 ],
               ),
             ),
           ),
           if (_bottomBanner != null)
-            Container(
+            SizedBox(
               width: _bottomBanner!.size.width.toDouble(),
               height: _bottomBanner!.size.height.toDouble(),
               child: AdWidget(ad: _bottomBanner!),
