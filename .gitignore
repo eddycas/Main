@@ -9,12 +9,10 @@ build/
 generated_plugin_registrant.dart
 
 # Android / Gradle
-android/.gradle/
+
 android/build/
 android/app/build/
 android/local.properties
-android/gradle.properties
-android/gradle/
 android/keystore/
 *.iml
 
