@@ -80,3 +80,5 @@ node_modules/
 
 # Ignore your temporary or large folder
 Danacid/
+/flutter/
+/flutterbread/
