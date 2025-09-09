@@ -347,3 +347,4 @@ ls
 cd com
 cd eddycas
 ls
+ip addr show wlan0
