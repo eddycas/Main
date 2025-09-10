@@ -348,3 +348,20 @@ cd com
 cd eddycas
 ls
 ip addr show wlan0
+ls
+rm app-release.apk
+ls
+git init
+git remote set-url origin https://github.com/eddycas/Checkpoint-.git
+git add .
+git commit -m "Milestone: working app launch without crash"
+git branch -M main
+git push -u origin main
+git remote set-url origin https://github.com/eddycas/Main
+git remote -v
+git add .
+git commit -m "Reconnected project to Main repo"
+git push origin main
+cd ~/android/app/src/main
+ls
+nano AndroidManifest.xml

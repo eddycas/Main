@@ -1,5 +1,5 @@
-name: eddy
-description: "A simple calculator app."
+name: quickcalc
+description: "A simple calculator with Google Ads."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  google_mobile_ads: ^6.0.0   # ✅ Google Ads SDK
 
 dev_dependencies:
   flutter_test:
