@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "839664223458",
+    "project_id": "quickcalc-f0290",
+    "storage_bucket": "quickcalc-f0290.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839664223458:android:17c7b54599f0b190430abb",
+        "android_client_info": {
+          "package_name": "com.eddycas.quickcalc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDW9wQz_4DEk-HympMC-uCrrcai4y3vZcY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

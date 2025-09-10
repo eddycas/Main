@@ -365,3 +365,58 @@ git push origin main
 cd ~/android/app/src/main
 ls
 nano AndroidManifest.xml
+ls
+cd lib
+ls
+nano main.dart
+nano main.dart
+cd
+# 1. Check your current branch
+git branch
+# 2. Add all changes
+git add .
+# 3. Commit with a clear message
+git commit -m "Added calculator UI + logic + Google Ads (banner, interstitial, rewarded)"
+# 4. Push to GitHub (main branch)
+git push origin main
+ls
+nano pubspec.yaml
+git add pubspec.yaml lib/main.dart
+git commit -m "Added calculator UI and Google Ads integration"
+git push origin main
+ls
+ls
+nano pubspec.yaml
+cd lib
+nano main.dart
+cd
+git add .
+git commit -m "Add calculator with banner ads, history, and improved logic"
+git push origin main
+cd android
+cd app 
+ls
+nano build.gradle.kts
+cd 
+cd android
+nano build.gradle.kts
+cd app
+nano build.gradle.kts
+cd
+ls
+nano pubspec.yaml
+cd lib
+ls
+nano main.dart
+nano main.dart
+nano main.dart
+cd
+nano pubspec.yaml
+cd lib
+ls
+nano main.dart
+nano auth_services.dart
+nano main.dart
+> main.dart
+ls
+nano main.dart

@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
-    id("dev.flutter.flutter-gradle-plugin") // Must be applied last
+    id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services") // ✅ Google Services plugin
 }
 
 android {
@@ -48,6 +48,3 @@ android {
 flutter {
     source = "../.."
 }
-
-// ✅ Add at the very bottom
-apply plugin: 'com.google.gms.google-services'
