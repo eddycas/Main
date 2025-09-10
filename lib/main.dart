@@ -41,11 +41,18 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   bool _isTopBannerLoaded = false;
   bool _isBottomBannerLoaded = false;
 
+  InterstitialAd? _interstitialAd;
+  RewardedAd? _rewardedAd;
+  bool _isInterstitialReady = false;
+  bool _isRewardedReady = false;
+
   @override
   void initState() {
     super.initState();
     _loadTopBanner();
     _loadBottomBanner();
+    _loadInterstitialAd();
+    _loadRewardedAd();
   }
 
   void _loadTopBanner() {
@@ -82,10 +89,44 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     )..load();
   }
 
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // Test interstitial
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+          _isInterstitialReady = true;
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('Interstitial failed: $error');
+        },
+      ),
+    );
+  }
+
+  void _loadRewardedAd() {
+    RewardedAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/5224354917', // Test rewarded
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isRewardedReady = true;
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('Rewarded failed: $error');
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _topBannerAd.dispose();
     _bottomBannerAd.dispose();
+    _interstitialAd?.dispose();
+    _rewardedAd?.dispose();
     super.dispose();
   }
 
@@ -101,16 +142,33 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
               _expression.replaceAll("×", "*").replaceAll("÷", "/"));
           ContextModel cm = ContextModel();
           double eval = exp.evaluate(EvaluationType.REAL, cm);
-          _result = eval.toString();
+
+          // ✅ No .0 unless decimal was used
+          if (eval == eval.toInt()) {
+            _result = eval.toInt().toString();
+          } else {
+            _result = eval.toString();
+          }
 
           // ✅ Save to history
           _history.add("$_expression = $_result");
 
           _calculationCount++;
           if (_calculationCount % 3 == 0) {
-            debugPrint("👉 Reward Ad should show here");
-            // TODO: Add reward ad logic
+            Future.delayed(const Duration(seconds: 10), () {
+              if (_isRewardedReady && _rewardedAd != null) {
+                _rewardedAd!.show(
+                  onUserEarnedReward: (ad, reward) {
+                    debugPrint("User earned reward: ${reward.amount} ${reward.type}");
+                  },
+                );
+                _isRewardedReady = false;
+                _rewardedAd = null;
+                _loadRewardedAd(); // reload next one
+              }
+            });
           }
+
         } catch (e) {
           _result = "Error";
         }
@@ -148,7 +206,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         leading: IconButton(
           icon: const Icon(Icons.settings),
           onPressed: () {
-            debugPrint("Settings pressed");
+            if (_isInterstitialReady && _interstitialAd != null) {
+              _interstitialAd!.show();
+              _isInterstitialReady = false;
+              _interstitialAd = null;
+              _loadInterstitialAd(); // reload next one
+            } else {
+              debugPrint("Settings pressed (Interstitial not ready)");
+            }
           },
         ),
         actions: [
