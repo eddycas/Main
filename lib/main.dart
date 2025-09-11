@@ -120,7 +120,7 @@ class LandingScreen extends StatelessWidget {
 
           } else {
 
-            return SignInScreen();
+            return const SignInScreen();
 
           }
 
@@ -416,7 +416,11 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     super.initState();
 
-    _loadHistory();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+
+      await _loadHistory();
+
+    });
 
     _loadTopBanner();
 
@@ -502,9 +506,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
               : "Error";
 
-          _history.add("$_expression = $_result");
+          if (_result != "Error") _calculationCount++;
 
-          _calculationCount++;
+          _history.add("$_expression = $_result");
 
           _checkRewardedAd();
 
@@ -556,27 +560,27 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _loadBottomBanner() {
 
-    _bottomBannerAd = BannerAd(
+  _bottomBannerAd = BannerAd(
 
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+    adUnitId: 'ca-app-pub-3940256099942544/6300978111',
 
-      size: AdSize.banner,
+    size: AdSize.banner,
 
-      request: const AdRequest(),
+    request: const AdRequest(),
 
-      listener: BannerAdListener(
+    listener: BannerAdListener(
 
-        onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
+      onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
 
-        onAdFailedToLoad: (ad, _) => ad.dispose(),
+      onAdFailedToLoad: (ad, _) => ad.dispose(),
 
-        onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
+      onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
 
-      ),
+    ),
 
-    )..load();
+  )..load();
 
-  }
+}
 
 
 
@@ -610,6 +614,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
             },
 
+            onAdFailedToShowFullScreenContent: (ad, error) {
+
+              ad.dispose();
+
+              _isInterstitialReady = false;
+
+              _loadInterstitialAd();
+
+            },
+
           );
 
         },
@@ -626,190 +640,202 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _loadRewardedAd() {
 
-  RewardedAd.load(
+    RewardedAd.load(
 
-    adUnitId: 'ca-app-pub-3940256099942544/5224354917',
+      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
 
-    request: const AdRequest(),
+      request: const AdRequest(),
 
-    rewardedAdLoadCallback: RewardedAdLoadCallback(
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
 
-      onAdLoaded: (ad) {
+        onAdLoaded: (ad) {
 
-        _rewardedAd = ad;
+          _rewardedAd = ad;
 
-        _isRewardedReady = true;
+          _isRewardedReady = true;
 
-        ad.fullScreenContentCallback = FullScreenContentCallback(
+          ad.fullScreenContentCallback = FullScreenContentCallback(
 
-          onAdDismissedFullScreenContent: (_) {
+            onAdDismissedFullScreenContent: (_) {
 
-            _rewardedAd = null;
+              _rewardedAd = null;
 
-            _isRewardedReady = false;
+              _isRewardedReady = false;
 
-            _loadRewardedAd();
+              _loadRewardedAd();
 
-          },
+            },
 
-        );
+            onAdFailedToShowFullScreenContent: (ad, error) {
 
-      },
+              ad.dispose();
 
-      onAdFailedToLoad: (error) {
+              _isRewardedReady = false;
 
-        debugPrint("Rewarded Ad failed: $error");
+              _loadRewardedAd();
 
-        _isRewardedReady = false;
+            },
 
-      },
+          );
 
-    ),
+        },
 
-  );
+        onAdFailedToLoad: (error) {
 
-}
+          debugPrint("Rewarded Ad failed: $error");
 
+          _isRewardedReady = false;
 
+        },
 
-void _checkRewardedAd() {
-
-  if (_calculationCount % 10 == 0 && !_isPremium && _isRewardedReady) {
-
-    _rewardedAd?.show(
-
-      onUserEarnedReward: (ad, reward) {
-
-        setState(() {
-
-          premiumUntil = DateTime.now().add(const Duration(hours: 1));
-
-        });
-
-      },
+      ),
 
     );
 
   }
 
-}
+
+
+  void _checkRewardedAd() {
+
+    if (_calculationCount % 10 == 0 && !_isPremium && _isRewardedReady) {
+
+      _rewardedAd?.show(
+
+        onUserEarnedReward: (ad, reward) {
+
+          setState(() {
+
+            premiumUntil = DateTime.now().add(const Duration(hours: 1));
+
+          });
+
+        },
+
+      );
+
+    }
+
+  }
 
 
 
-void _logAdClick(String adType, {double revenue = 0}) {
+  void _logAdClick(String adType, {double revenue = 0}) {
 
-  debugPrint("Ad clicked: $adType, revenue: $revenue");
+    debugPrint("Ad clicked: $adType, revenue: $revenue");
 
-}
-
-
-
-Widget _buildButton(String text, {Color? color}) {
-
-  return ElevatedButton(
-
-    onPressed: () => _onButtonPressed(text),
-
-    style: ElevatedButton.styleFrom(
-
-      backgroundColor: color ?? Colors.blueGrey,
-
-      minimumSize: const Size(70, 70),
-
-    ),
-
-    child: Text(text, style: const TextStyle(fontSize: 24)),
-
-  );
-
-}
+  }
 
 
 
-@override
+  Widget _buildButton(String text, {Color? color}) {
 
-Widget build(BuildContext context) {
+    return ElevatedButton(
 
-  return Scaffold(
+      onPressed: () => _onButtonPressed(text),
 
-    appBar: AppBar(
+      style: ElevatedButton.styleFrom(
 
-      title: Text("QuickCalc - ${widget.user.email}"),
+        backgroundColor: color ?? Colors.blueGrey,
 
-      actions: [
+        minimumSize: const Size(70, 70),
 
-        IconButton(
+      ),
 
-          icon: const Icon(Icons.logout),
+      child: Text(text, style: const TextStyle(fontSize: 24)),
 
-          onPressed: () async {
+    );
 
-            await FirebaseAuth.instance.signOut();
+  }
 
-            Navigator.pushReplacement(
 
-                context, MaterialPageRoute(builder: (_) => const LandingScreen()));
 
-          },
+  @override
 
-        ),
+  Widget build(BuildContext context) {
 
-      ],
+    return Scaffold(
 
-    ),
+      appBar: AppBar(
 
-    body: Column(
+        title: Text("QuickCalc - ${widget.user.email}"),
 
-      children: [
+        actions: [
 
-        if (_isTopBannerLoaded) SizedBox(height: 50, child: AdWidget(ad: _topBannerAd)),
+          IconButton(
 
-        Expanded(
+            icon: const Icon(Icons.logout),
 
-          child: Column(
+            onPressed: () async {
 
-            mainAxisAlignment: MainAxisAlignment.center,
+              await FirebaseAuth.instance.signOut();
 
-            children: [
+              Navigator.pushReplacement(
 
-              Text(_expression, style: const TextStyle(fontSize: 32)),
+                  context, MaterialPageRoute(builder: (_) => const LandingScreen()));
 
-              const SizedBox(height: 10),
-
-              Text(_result, style: const TextStyle(fontSize: 28, color: Colors.greenAccent)),
-
-              const SizedBox(height: 20),
-
-              Wrap(
-
-                spacing: 10,
-
-                runSpacing: 10,
-
-                children: [
-
-                  ...["7","8","9","÷","4","5","6","×","1","2","3","-","0",".","=","+"].map(
-
-                      (e) => _buildButton(e, color: e == "=" ? Colors.orange : null)),
-
-                  _buildButton("C", color: Colors.red),
-
-                ],
-
-              ),
-
-            ],
+            },
 
           ),
 
-        ),
+        ],
 
-        if (_isBottomBannerLoaded) SizedBox(height: 50, child: AdWidget(ad: _bottomBannerAd)),
+      ),
 
-      ],
+      body: Column(
 
-    ),
+        children: [
 
-  );
+          if (_isTopBannerLoaded) SizedBox(height: 50, child: AdWidget(ad: _topBannerAd)),
+
+          Expanded(
+
+            child: Column(
+
+              mainAxisAlignment: MainAxisAlignment.center,
+
+              children: [
+
+                Text(_expression, style: const TextStyle(fontSize: 32)),
+
+                const SizedBox(height: 10),
+
+                Text(_result, style: const TextStyle(fontSize: 28, color: Colors.greenAccent)),
+
+                const SizedBox(height: 20),
+
+                Wrap(
+
+                  spacing: 10,
+
+                  runSpacing: 10,
+
+                  children: [
+
+                    ...["7","8","9","÷","4","5","6","×","1","2","3","-","0",".","=","+"].map(
+
+                        (e) => _buildButton(e, color: e == "=" ? Colors.orange : null)),
+
+                    _buildButton("C", color: Colors.red),
+
+                  ],
+
+                ),
+
+              ],
+
+            ),
+
+          ),
+
+          if (_isBottomBannerLoaded) SizedBox(height: 50, child: AdWidget(ad: _bottomBannerAd)),
+
+        ],
+
+      ),
+
+    );
+
+  }
 
 }
