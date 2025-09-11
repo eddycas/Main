@@ -420,3 +420,23 @@ nano main.dart
 > main.dart
 ls
 nano main.dart
+cd lib
+nano main.dart
+> main.dart
+nano main.dart
+cd
+flutter pub upgrade
+which flutter
+export PATH="$PATH:/home/flutter/bin"
+flutter --version
+export PATH="$PATH:/home/eddy/flutter/bin"
+export PATH="$PATH:/home/eddy/flutter/bin"
+eddy@localhost:~$ export PATH="$PATH:/home/eddy/flutter/bin"
+eddy@localhost:~$ export PATH="$PATH:/home/eddy/flutter/bin"
+eddy@localhost:~$
+flutter --version
+flutter pub upgrade
+git add .
+git add lib/main.dart lib/firebase_options.dart pubspec.yaml
+git commit -m "Update app: main.dart, firebase options, pubspec"
+git push origin main

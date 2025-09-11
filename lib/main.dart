@@ -610,7 +610,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  void _loadInterstitialAd() {
+void _loadInterstitialAd() {
 
     InterstitialAd.load(
 
@@ -722,17 +722,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   }
 
-}
 
 
+  // ============================
 
-// ============================
+  // Calculator Buttons & UI
 
-// Calculator Buttons & UI
-
-// ============================
-
-extension CalculatorUI on _CalculatorScreenState {
+  // ============================
 
   Widget _buildButton(String text, {Color color = Colors.white30}) {
 
@@ -900,7 +896,7 @@ extension CalculatorUI on _CalculatorScreenState {
 
       context,
 
-      MaterialPageRoute(builder: (_) => SettingsScreen()),
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
 
     );
 
@@ -978,7 +974,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _themeColor = color);
 
-    // You can apply this theme to the app dynamically later
+    // Apply theme changes globally if needed
 
   }
 
