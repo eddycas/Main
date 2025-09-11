@@ -52,3 +52,4 @@ windows/flutter/
 yamtar/
  yamtarr/
 linux/flutter/
+macos/Flutter/GeneratedPluginRegistrant.*

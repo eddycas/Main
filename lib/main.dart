@@ -18,8 +18,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-
 import 'firebase_options.dart';
 
 
@@ -42,8 +40,6 @@ class MyApp extends StatefulWidget {
 
   const MyApp({super.key});
 
-
-
   @override
 
   State<MyApp> createState() => _MyAppState();
@@ -54,7 +50,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
 
-  ThemeMode _themeMode = ThemeMode.dark; // Default is black theme
+  ThemeMode _themeMode = ThemeMode.dark; // Default black theme
 
 
 
@@ -131,8 +127,6 @@ class SignInScreen extends StatefulWidget {
   final Function(ThemeMode) onThemeChange;
 
   const SignInScreen({super.key, required this.onThemeChange});
-
-
 
   @override
 
