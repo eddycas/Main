@@ -1,4 +1,4 @@
-# flutterbread
+# eddy
 
 A new Flutter project.
 

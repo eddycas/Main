@@ -1,32 +1,22 @@
-​// ============================
+import 'package:flutter/material.dart';
 
-// PART 1: MAIN SETUP & SIGN-IN SCREEN (Updated)
+import 'package:firebase_core/firebase_core.dart';
 
-// ============================
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'package:firebase_analytics/observer.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-
-import 'package:flutter/material.dart';
-
-import 'package:firebase_core/firebase_core.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-import 'package:device_info_plus/device_info_plus.dart';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'dart:async';
-
 import 'package:math_expressions/math_expressions.dart';
 
-import 'firebase_options.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
-import 'auth_service.dart';
+import 'firebase_options.dart';
 
 
 
@@ -52,6 +42,8 @@ class MyApp extends StatelessWidget {
 
   const MyApp({super.key});
 
+
+
   static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   static FirebaseAnalyticsObserver observer =
@@ -72,6 +64,16 @@ class MyApp extends StatelessWidget {
 
         scaffoldBackgroundColor: Colors.black,
 
+        inputDecorationTheme: const InputDecorationTheme(
+
+          filled: true,
+
+          fillColor: Colors.white10,
+
+          border: OutlineInputBorder(),
+
+        ),
+
       ),
 
       navigatorObservers: [observer],
@@ -86,19 +88,17 @@ class MyApp extends StatelessWidget {
 
 
 
-// ============================
-
-// ✅ Sign-In Screen
-
-// ============================
+// ✅ Sign-In Screen (Email + Google)
 
 class SignInScreen extends StatefulWidget {
 
   const SignInScreen({super.key});
 
+
+
   @override
 
-  _SignInScreenState createState() => _SignInScreenState();
+  State<SignInScreen> createState() => _SignInScreenState();
 
 }
 
@@ -114,37 +114,129 @@ class _SignInScreenState extends State<SignInScreen> {
 
 
 
-  void _signIn() async {
+  Future<void> _signInWithEmail() async {
 
     setState(() => _isLoading = true);
 
     try {
 
-      UserCredential userCredential = await AuthService.signInUser(
+      UserCredential user = await FirebaseAuth.instance
 
-          emailController.text.trim(), passwordController.text.trim());
+          .signInWithEmailAndPassword(
 
-      debugPrint('Signed in as: ${userCredential.user?.email}');
+        email: emailController.text.trim(),
+
+        password: passwordController.text.trim(),
+
+      );
+
+      _navigateToCalculator(user.user);
+
+    } catch (e) {
+
+      _showError("Email sign-in failed: $e");
+
+    }
+
+    setState(() => _isLoading = false);
+
+  }
+
+
+
+  Future<void> _signUpWithEmail() async {
+
+    setState(() => _isLoading = true);
+
+    try {
+
+      UserCredential user = await FirebaseAuth.instance
+
+          .createUserWithEmailAndPassword(
+
+        email: emailController.text.trim(),
+
+        password: passwordController.text.trim(),
+
+      );
+
+      _navigateToCalculator(user.user);
+
+    } catch (e) {
+
+      _showError("Email sign-up failed: $e");
+
+    }
+
+    setState(() => _isLoading = false);
+
+  }
+
+
+
+  Future<void> _signInWithGoogle() async {
+
+    try {
+
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+
+        accessToken: googleAuth.accessToken,
+
+        idToken: googleAuth.idToken,
+
+      );
+
+      UserCredential user =
+
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      _navigateToCalculator(user.user);
+
+    } catch (e) {
+
+      _showError("Google sign-in failed: $e");
+
+    }
+
+  }
+
+
+
+  void _navigateToCalculator(User? user) {
+
+    if (user != null) {
 
       Navigator.pushReplacement(
 
         context,
 
-        MaterialPageRoute(builder: (_) => const CalculatorScreen()),
+        MaterialPageRoute(builder: (_) => CalculatorScreen(user: user)),
 
       );
 
-    } catch (e) {
-
-      debugPrint('Sign-in failed: $e');
-
-      ScaffoldMessenger.of(context)
-
-          .showSnackBar(SnackBar(content: Text('Sign-in failed: $e')));
-
     }
 
-    setState(() => _isLoading = false);
+  }
+
+
+
+  void _showError(String message) {
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+
+      content: Text(message),
+
+      backgroundColor: Colors.red,
+
+    ));
 
   }
 
@@ -158,7 +250,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       body: Center(
 
-        child: Padding(
+        child: SingleChildScrollView(
 
           padding: const EdgeInsets.all(24.0),
 
@@ -168,11 +260,17 @@ class _SignInScreenState extends State<SignInScreen> {
 
             children: [
 
+              const Text("Quickcalc Login",
+
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+
+              const SizedBox(height: 20),
+
               TextField(
 
                 controller: emailController,
 
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(labelText: "Email"),
 
               ),
 
@@ -182,7 +280,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                 controller: passwordController,
 
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(labelText: "Password"),
 
                 obscureText: true,
 
@@ -194,11 +292,45 @@ class _SignInScreenState extends State<SignInScreen> {
 
                   ? const CircularProgressIndicator()
 
-                  : ElevatedButton(
+                  : Column(
 
-                      onPressed: _signIn,
+                      children: [
 
-                      child: const Text('Sign In'),
+                        ElevatedButton(
+
+                          onPressed: _signInWithEmail,
+
+                          child: const Text("Sign In"),
+
+                        ),
+
+                        ElevatedButton(
+
+                          onPressed: _signUpWithEmail,
+
+                          child: const Text("Sign Up"),
+
+                        ),
+
+                        const Divider(height: 30),
+
+                        ElevatedButton.icon(
+
+                          onPressed: _signInWithGoogle,
+
+                          icon: const Icon(Icons.login),
+
+                          label: const Text("Sign In with Google"),
+
+                          style: ElevatedButton.styleFrom(
+
+                            backgroundColor: Colors.redAccent,
+
+                          ),
+
+                        ),
+
+                      ],
 
                     ),
 
@@ -218,31 +350,25 @@ class _SignInScreenState extends State<SignInScreen> {
 
 
 
-// ============================
-
-// PART 2: CALCULATOR SCREEN SETUP & STATE VARIABLES (Partial)
-
-// ============================
+// ✅ Calculator Screen
 
 class CalculatorScreen extends StatefulWidget {
 
-  const CalculatorScreen({super.key});
+  final User user;
+
+  const CalculatorScreen({super.key, required this.user});
+
+
 
   @override
 
-  _CalculatorScreenState createState() => _CalculatorScreenState();
+  State<CalculatorScreen> createState() => _CalculatorScreenState();
 
 }
 
 
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
-
-  // ============================
-
-  // Calculator state
-
-  // ============================
 
   String _expression = "";
 
@@ -254,23 +380,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  // ============================
-
-  // Ads
-
-  // ============================
-
   late BannerAd _topBannerAd;
 
   late BannerAd _bottomBannerAd;
 
-  InterstitialAd? _interstitialAd;
-
-  RewardedAd? _rewardedAd;
-
   bool _isTopBannerLoaded = false;
 
   bool _isBottomBannerLoaded = false;
+
+
+
+  InterstitialAd? _interstitialAd;
+
+  RewardedAd? _rewardedAd;
 
   bool _isInterstitialReady = false;
 
@@ -278,49 +400,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  // ============================
+  String? deviceInfo = "";
 
-  // User / Device info
-
-  // ============================
-
-  User? currentUser;
-
-  String deviceInfo = "unknown";
-
-  Map<String, double> adRevenueByUser = {};
-
-  double revenueLast24h = 0;
-
-  double revenueLast7d = 0;
-
-  double revenueLast30d = 0;
-
-
-
-  // ============================
-
-  // Premium / Reward tracking
-
-  // ============================
-
-  bool _hasPremium = false;
-
-  DateTime? _lastRewardAdTime;
-
-
-
-  // ============================
-
-  // Timers
-
-  // ============================
-
-  Timer? _idleTimer;
-
-  DateTime? _lastInterstitialTime;
-
-  DateTime? _lastButtonPress;
+  DateTime? premiumUntil;
 
 
 
@@ -330,14 +412,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-
-      _initializeUserAndDevice();
-
-      _loadPremium();
-
-    });
-
     _loadTopBanner();
 
     _loadBottomBanner();
@@ -346,93 +420,27 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     _loadRewardedAd();
 
-    _startIdleTimer();
+    _getDeviceInfo();
 
   }
 
 
 
-  // ============================
-
-  // Initialize user and device info
-
-  // ============================
-
-  Future<void> _initializeUserAndDevice() async {
-
-    currentUser = FirebaseAuth.instance.currentUser;
+  Future<void> _getDeviceInfo() async {
 
     DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
 
     if (Theme.of(context).platform == TargetPlatform.android) {
 
-      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+      AndroidDeviceInfo android = await deviceInfoPlugin.androidInfo;
 
-      deviceInfo = "${androidInfo.manufacturer} ${androidInfo.model}";
+      deviceInfo = "${android.manufacturer} ${android.model}";
 
     } else {
 
-      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      IosDeviceInfo ios = await deviceInfoPlugin.iosInfo;
 
-      deviceInfo = "${iosInfo.name} ${iosInfo.model}";
-
-    }
-
-    debugPrint("Device info: $deviceInfo");
-
-  }
-
-
-
-  // ============================
-
-  // Persistent premium
-
-  // ============================
-
-  Future<void> _loadPremium() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    _hasPremium = prefs.getBool('hasPremium') ?? false;
-
-    int? lastRewardMillis = prefs.getInt('lastRewardTime');
-
-    if (lastRewardMillis != null) {
-
-      _lastRewardAdTime =
-
-          DateTime.fromMillisecondsSinceEpoch(lastRewardMillis);
-
-      // Expire premium after 1 hour
-
-      if (DateTime.now().difference(_lastRewardAdTime!) >
-
-          const Duration(hours: 1)) {
-
-        _hasPremium = false;
-
-      }
-
-    }
-
-    setState(() {});
-
-  }
-
-
-
-  Future<void> _savePremium() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    prefs.setBool('hasPremium', _hasPremium);
-
-    if (_lastRewardAdTime != null) {
-
-      prefs.setInt(
-
-          'lastRewardTime', _lastRewardAdTime!.millisecondsSinceEpoch);
+      deviceInfo = "${ios.name} ${ios.model}";
 
     }
 
@@ -440,425 +448,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  // ============================
+  bool get _isPremium =>
 
-  // Update last button press (for idle ad logic)
+      premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
 
-  // ============================
-
-  void _updateLastButtonPress() {
-
-    _lastButtonPress = DateTime.now();
-
-  }
-
-}
-
-
+  
 
 // ============================
-
-// PART 3: ADS LOGIC & IDLE TIMER (Updated)
-
-// ============================
-
-extension AdHelpers on _CalculatorScreenState {
-
-  // ============================
-
-  // Log ad click / revenue
-
-  // ============================
-
-  void _logAdClick(String adType, {String? page, double revenue = 0.0}) async {
-
-    if (currentUser != null) {
-
-      final now = DateTime.now();
-
-      final clickId = "${currentUser!.uid}_${now.millisecondsSinceEpoch}";
-
-      // Track revenue per user
-
-      adRevenueByUser[currentUser!.uid] =
-
-          (adRevenueByUser[currentUser!.uid] ?? 0) + revenue;
-
-      // Update last periods (simplified; can add persistent storage)
-
-      revenueLast24h += revenue;
-
-      revenueLast7d += revenue;
-
-      revenueLast30d += revenue;
-
-
-
-      // Firebase Analytics
-
-      MyApp.analytics.logEvent(
-
-        name: 'ad_clicked',
-
-        parameters: {
-
-          'click_id': clickId,
-
-          'ad_type': adType,
-
-          'page': page ?? 'calculator_screen',
-
-          'user_email': currentUser!.email,
-
-          'user_id': currentUser!.uid,
-
-          'device': deviceInfo,
-
-          'timestamp': now.toIso8601String(),
-
-          'date': "${now.year}-${now.month}-${now.day}",
-
-          'time': "${now.hour}:${now.minute}:${now.second}",
-
-          'revenue': revenue,
-
-        },
-
-      );
-
-
-
-      debugPrint(
-
-          'Logged ad click: $adType by ${currentUser!.email} at ${now.toIso8601String()} (Revenue: $revenue)');
-
-    }
-
-  }
-
-
-
-  // ============================
-
-  // Idle Timer for Interstitial Ads
-
-  // ============================
-
-  void _startIdleTimer() {
-
-    _idleTimer?.cancel();
-
-    _idleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-
-      if (_lastInterstitialTime == null ||
-
-          DateTime.now().difference(_lastInterstitialTime!) >
-
-              const Duration(minutes: 15)) {
-
-        if (_lastButtonPress != null &&
-
-            DateTime.now().difference(_lastButtonPress!) >
-
-                const Duration(seconds: 20)) {
-
-          _showInterstitialIfReady();
-
-        }
-
-      }
-
-    });
-
-  }
-
-
-
-  // ============================
-
-  // Load Top Banner
-
-  // ============================
-
-  void _loadTopBanner() {
-
-    _topBannerAd = BannerAd(
-
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
-
-      size: AdSize.banner,
-
-      request: const AdRequest(),
-
-      listener: BannerAdListener(
-
-        onAdLoaded: (_) => setState(() => _isTopBannerLoaded = true),
-
-        onAdFailedToLoad: (ad, error) {
-
-          ad.dispose();
-
-          debugPrint('Top banner failed: $error');
-
-        },
-
-        onAdOpened: (_) => _logAdClick("top_banner", revenue: 0.05),
-
-      ),
-
-    )..load();
-
-  }
-
-
-
-  // ============================
-
-  // Load Bottom Banner
-
-  // ============================
-
-  void _loadBottomBanner() {
-
-    _bottomBannerAd = BannerAd(
-
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
-
-      size: AdSize.banner,
-
-      request: const AdRequest(),
-
-      listener: BannerAdListener(
-
-        onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
-
-        onAdFailedToLoad: (ad, error) {
-
-          ad.dispose();
-
-          debugPrint('Bottom banner failed: $error');
-
-        },
-
-        onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
-
-      ),
-
-    )..load();
-
-  }
-
-
-
-  // ============================
-
-  // Load Interstitial Ad
-
-  // ============================
-
-  void _loadInterstitialAd() {
-
-    InterstitialAd.load(
-
-      adUnitId: 'ca-app-pub-3940256099942544/1033173712',
-
-      request: const AdRequest(),
-
-      adLoadCallback: InterstitialAdLoadCallback(
-
-        onAdLoaded: (ad) {
-
-          _interstitialAd = ad;
-
-          _isInterstitialReady = true;
-
-          ad.fullScreenContentCallback = FullScreenContentCallback(
-
-            onAdShowedFullScreenContent: (_) =>
-
-                _logAdClick("interstitial", revenue: 0.15),
-
-            onAdDismissedFullScreenContent: (_) {
-
-              _interstitialAd = null;
-
-              _isInterstitialReady = false;
-
-              _lastInterstitialTime = DateTime.now();
-
-              _loadInterstitialAd(); // reload
-
-            },
-
-          );
-
-        },
-
-        onAdFailedToLoad: (error) => debugPrint('Interstitial failed: $error'),
-
-      ),
-
-    );
-
-  }
-
-
-
-  // ============================
-
-  // Load Rewarded Ad
-
-  // ============================
-
-  void _loadRewardedAd() {
-
-    RewardedAd.load(
-
-      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
-
-      request: const AdRequest(),
-
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-
-        onAdLoaded: (ad) {
-
-          _rewardedAd = ad;
-
-          _isRewardedReady = true;
-
-          ad.fullScreenContentCallback = FullScreenContentCallback(
-
-            onAdShowedFullScreenContent: (_) =>
-
-                _logAdClick("rewarded", revenue: 0.2),
-
-            onAdDismissedFullScreenContent: (_) {
-
-              _rewardedAd = null;
-
-              _isRewardedReady = false;
-
-              _lastRewardAdTime = DateTime.now();
-
-              _savePremium(); // persist premium state
-
-              _loadRewardedAd(); // reload
-
-            },
-
-          );
-
-        },
-
-        onAdFailedToLoad: (error) => debugPrint('Rewarded failed: $error'),
-
-      ),
-
-    );
-
-  }
-
-
-
-  // ============================
-
-  // Show Interstitial if ready
-
-  // ============================
-
-  void _showInterstitialIfReady() {
-
-    if (_isInterstitialReady && _interstitialAd != null) {
-
-      _interstitialAd!.show();
-
-      _isInterstitialReady = false;
-
-      _interstitialAd = null;
-
-    }
-
-  }
-
-
-
-  // ============================
-
-  // Show Rewarded Ad if eligible
-
-  // ============================
-
-  void _showRewardedIfEligible() {
-
-    if (_calculationCount >= 5 &&
-
-        (_lastRewardAdTime == null ||
-
-            DateTime.now().difference(_lastRewardAdTime!) >
-
-                const Duration(minutes: 30))) {
-
-      if (_isRewardedReady && _rewardedAd != null) {
-
-        _rewardedAd!.show(onUserEarnedReward: (ad, reward) {
-
-          debugPrint(
-
-              "User earned reward: ${reward.amount} ${reward.type}");
-
-          _lastRewardAdTime = DateTime.now();
-
-          _hasPremium = true;
-
-          _savePremium();
-
-        });
-
-        _isRewardedReady = false;
-
-        _rewardedAd = null;
-
-      }
-
-    }
-
-  }
-
-}
-
-
-
-// ============================
-
-// PART 4: CALCULATOR LOGIC, HISTORY, & PREMIUM
-
-// ============================
-
-extension CalculatorHelpers on _CalculatorScreenState {
-
-  // ============================
-
-  // Update last button press for idle timer
-
-  // ============================
-
-  void _updateLastButtonPress() {
-
-    _lastButtonPress = DateTime.now();
-
-  }
-
-
-
-  // ============================
 
   // Calculator Button Logic
 
   // ============================
 
   void _onButtonPressed(String value) {
-
-    _updateLastButtonPress(); // reset idle timer
 
     setState(() {
 
@@ -874,9 +476,9 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
           Parser p = Parser();
 
-          Expression exp = p.parse(
+          Expression exp =
 
-              _expression.replaceAll("×", "*").replaceAll("÷", "/"));
+              p.parse(_expression.replaceAll("×", "*").replaceAll("÷", "/"));
 
           ContextModel cm = ContextModel();
 
@@ -888,7 +490,7 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
           _calculationCount++;
 
-          _showRewardedIfEligible();
+          _checkRewardedAd();
 
           _saveHistory();
 
@@ -940,25 +542,69 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
   // ============================
 
-  // Persistent Premium Storage
+  // Ads Loading
 
   // ============================
 
-  Future<void> _loadPremium() async {
+  void _loadTopBanner() {
 
-    final prefs = await SharedPreferences.getInstance();
+    _topBannerAd = BannerAd(
 
-    _hasPremium = prefs.getBool('has_premium') ?? false;
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+
+      size: AdSize.banner,
+
+      request: const AdRequest(),
+
+      listener: BannerAdListener(
+
+        onAdLoaded: (_) => setState(() => _isTopBannerLoaded = true),
+
+        onAdFailedToLoad: (ad, error) {
+
+          ad.dispose();
+
+          debugPrint("Top banner failed: $error");
+
+        },
+
+        onAdOpened: (_) => _logAdClick("top_banner", revenue: 0.05),
+
+      ),
+
+    )..load();
 
   }
 
 
 
-  Future<void> _savePremium() async {
+  void _loadBottomBanner() {
 
-    final prefs = await SharedPreferences.getInstance();
+    _bottomBannerAd = BannerAd(
 
-    prefs.setBool('has_premium', _hasPremium);
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+
+      size: AdSize.banner,
+
+      request: const AdRequest(),
+
+      listener: BannerAdListener(
+
+        onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
+
+        onAdFailedToLoad: (ad, error) {
+
+          ad.dispose();
+
+          debugPrint("Bottom banner failed: $error");
+
+        },
+
+        onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
+
+      ),
+
+    )..load();
 
   }
 
@@ -966,53 +612,111 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
   // ============================
 
-  // Slide-Out Scientific Panel
+  // Interstitial & Rewarded
 
   // ============================
 
-  bool _isSciPanelOpen = false;
+  void _loadInterstitialAd() {
 
-  void _toggleSciPanel() {
+    InterstitialAd.load(
 
-    if (_hasPremium) {
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712',
 
-      setState(() => _isSciPanelOpen = !_isSciPanelOpen);
+      request: const AdRequest(),
 
-    } else {
+      adLoadCallback: InterstitialAdLoadCallback(
 
-      // Offer reward ad for temporary premium
+        onAdLoaded: (ad) {
 
-      _showRewardForPremium();
+          _interstitialAd = ad;
 
-    }
+          _isInterstitialReady = true;
+
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+
+            onAdShowedFullScreenContent: (_) =>
+
+                _logAdClick("interstitial", revenue: 0.15),
+
+            onAdDismissedFullScreenContent: (_) {
+
+              _interstitialAd = null;
+
+              _isInterstitialReady = false;
+
+              _loadInterstitialAd();
+
+            },
+
+          );
+
+        },
+
+        onAdFailedToLoad: (error) => debugPrint("Interstitial failed: $error"),
+
+      ),
+
+    );
 
   }
 
 
 
-  void _showRewardForPremium() {
+  void _loadRewardedAd() {
 
-    if (_isRewardedReady && _rewardedAd != null) {
+    RewardedAd.load(
+
+      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
+
+      request: const AdRequest(),
+
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+
+        onAdLoaded: (ad) {
+
+          _rewardedAd = ad;
+
+          _isRewardedReady = true;
+
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+
+            onAdDismissedFullScreenContent: (_) {
+
+              _rewardedAd = null;
+
+              _isRewardedReady = false;
+
+              _loadRewardedAd();
+
+            },
+
+          );
+
+        },
+
+        onAdFailedToLoad: (error) => debugPrint("Rewarded failed: $error"),
+
+      ),
+
+    );
+
+  }
+
+
+
+  void _checkRewardedAd() {
+
+    if (_calculationCount >= 5 && _isRewardedReady && _rewardedAd != null) {
 
       _rewardedAd!.show(onUserEarnedReward: (ad, reward) {
 
-        setState(() => _hasPremium = true);
-
-        _lastRewardAdTime = DateTime.now();
-
-        _savePremium();
-
-        debugPrint("Premium granted for 1hr or session");
+        premiumUntil = DateTime.now().add(const Duration(hours: 1));
 
       });
 
-    } else {
+      _isRewardedReady = false;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text("Rewarded ad not ready yet.")),
-
-      );
+      _rewardedAd = null;
 
     }
 
@@ -1020,9 +724,17 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
 
 
-  // ============================
+  void _logAdClick(String adType, {double revenue = 0.0}) {
 
-  // Build Calculator Button Widget
+    debugPrint("Ad clicked: $adType, revenue: $revenue, user: ${widget.user.email}");
+
+  }
+
+
+
+// ============================
+
+  // Build Calculator Buttons
 
   // ============================
 
@@ -1062,311 +774,209 @@ extension CalculatorHelpers on _CalculatorScreenState {
 
   }
 
-}
 
 
+  // ============================
 
-// ============================
+  // Build UI
 
-// PART 5: BUILD METHOD & UI
+  // ============================
 
-// ============================
+  @override
 
-@override
+  Widget build(BuildContext context) {
 
-Widget build(BuildContext context) {
+    return Scaffold(
 
-  return Scaffold(
+      appBar: AppBar(
 
-    appBar: AppBar(
+        title: const Text("QuickCalc"),
 
-      backgroundColor: Colors.black,
+        backgroundColor: Colors.black,
 
-      title: const Text("Quickcalc"),
+        actions: [
 
-      leading: IconButton(
+          IconButton(
 
-        icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.history),
 
-        onPressed: _showSettingsScreen,
+            onPressed: () {
+
+              Navigator.push(
+
+                context,
+
+                MaterialPageRoute(
+
+                  builder: (_) => HistoryScreen(history: _history),
+
+                ),
+
+              );
+
+            },
+
+          ),
+
+          IconButton(
+
+            icon: const Icon(Icons.settings),
+
+            onPressed: () => _showSettingsScreen(),
+
+          ),
+
+        ],
 
       ),
 
-      actions: [
+      body: Column(
 
-        IconButton(
+        children: [
 
-          icon: const Icon(Icons.history),
+          if (_isTopBannerLoaded)
 
-          onPressed: () {
+            SizedBox(
 
-            Navigator.push(
+              height: _topBannerAd.size.height.toDouble(),
 
-              context,
+              width: _topBannerAd.size.width.toDouble(),
 
-              MaterialPageRoute(
-
-                builder: (_) => HistoryScreen(history: _history),
-
-              ),
-
-            );
-
-          },
-
-        ),
-
-      ],
-
-    ),
-
-    body: Stack(
-
-      children: [
-
-        Column(
-
-          children: [
-
-            if (_isTopBannerLoaded)
-
-              SizedBox(
-
-                height: _topBannerAd.size.height.toDouble(),
-
-                width: _topBannerAd.size.width.toDouble(),
-
-                child: AdWidget(ad: _topBannerAd),
-
-              ),
-
-            Expanded(
-
-              child: Container(
-
-                alignment: Alignment.bottomRight,
-
-                padding: const EdgeInsets.all(20),
-
-                child: Column(
-
-                  mainAxisAlignment: MainAxisAlignment.end,
-
-                  crossAxisAlignment: CrossAxisAlignment.end,
-
-                  children: [
-
-                    Text(
-
-                      _expression,
-
-                      style: const TextStyle(fontSize: 32, color: Colors.white70),
-
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    Text(
-
-                      _result,
-
-                      style: const TextStyle(fontSize: 48, color: Colors.white),
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
+              child: AdWidget(ad: _topBannerAd),
 
             ),
 
-            Column(
-
-              children: [
-
-                Row(children: [
-
-                  _buildButton("7"),
-
-                  _buildButton("8"),
-
-                  _buildButton("9"),
-
-                  _buildButton("÷", color: Colors.orange)
-
-                ]),
-
-                Row(children: [
-
-                  _buildButton("4"),
-
-                  _buildButton("5"),
-
-                  _buildButton("6"),
-
-                  _buildButton("×", color: Colors.orange)
-
-                ]),
-
-                Row(children: [
-
-                  _buildButton("1"),
-
-                  _buildButton("2"),
-
-                  _buildButton("3"),
-
-                  _buildButton("-", color: Colors.orange)
-
-                ]),
-
-                Row(children: [
-
-                  _buildButton("0"),
-
-                  _buildButton("."),
-
-                  _buildButton("=", color: Colors.green),
-
-                  _buildButton("+", color: Colors.orange)
-
-                ]),
-
-                Row(children: [_buildButton("C", color: Colors.red)]),
-
-              ],
-
-            ),
-
-            if (_isBottomBannerLoaded)
-
-              SizedBox(
-
-                height: _bottomBannerAd.size.height.toDouble(),
-
-                width: _bottomBannerAd.size.width.toDouble(),
-
-                child: AdWidget(ad: _bottomBannerAd),
-
-              ),
-
-          ],
-
-        ),
-
-
-
-        // ============================
-
-        // Slide-Out Scientific Calculator
-
-        // ============================
-
-        Positioned(
-
-          right: _isSciPanelOpen ? 0 : -MediaQuery.of(context).size.width / 2,
-
-          top: MediaQuery.of(context).size.height / 4,
-
-          height: MediaQuery.of(context).size.height / 2,
-
-          width: MediaQuery.of(context).size.width / 2,
-
-          child: Container(
-
-            color: Colors.grey[900]?.withOpacity(0.95),
-
-            child: Column(
-
-              children: [
-
-                Row(children: [
-
-                  _buildButton("sin"),
-
-                  _buildButton("cos"),
-
-                  _buildButton("tan")
-
-                ]),
-
-                Row(children: [
-
-                  _buildButton("log"),
-
-                  _buildButton("ln"),
-
-                  _buildButton("√")
-
-                ]),
-
-                Row(children: [
-
-                  _buildButton("^"),
-
-                  _buildButton("("),
-
-                  _buildButton(")")
-
-                ]),
-
-              ],
-
-            ),
-
-          ),
-
-        ),
-
-
-
-        // Half-circle button to toggle scientific panel
-
-        Positioned(
-
-          right: 0,
-
-          top: MediaQuery.of(context).size.height / 2 - 30,
-
-          child: GestureDetector(
-
-            onTap: _toggleSciPanel,
+          Expanded(
 
             child: Container(
 
-              width: 60,
+              padding: const EdgeInsets.all(20),
 
-              height: 60,
+              alignment: Alignment.bottomRight,
 
-              decoration: BoxDecoration(
+              child: Column(
 
-                color: Colors.orange,
+                mainAxisAlignment: MainAxisAlignment.end,
 
-                borderRadius: const BorderRadius.only(
+                crossAxisAlignment: CrossAxisAlignment.end,
 
-                  topLeft: Radius.circular(30),
+                children: [
 
-                  bottomLeft: Radius.circular(30),
+                  Text(_expression,
 
-                ),
+                      style: const TextStyle(fontSize: 32, color: Colors.white70)),
+
+                  const SizedBox(height: 10),
+
+                  Text(_result,
+
+                      style: const TextStyle(fontSize: 48, color: Colors.white)),
+
+                ],
 
               ),
-
-              child: const Icon(Icons.arrow_left, color: Colors.white),
 
             ),
 
           ),
 
-        ),
+          Column(
 
-      ],
+            children: [
 
-    ),
+              Row(children: [
 
-  );
+                _buildButton("7"),
+
+                _buildButton("8"),
+
+                _buildButton("9"),
+
+                _buildButton("÷", color: Colors.orange)
+
+              ]),
+
+              Row(children: [
+
+                _buildButton("4"),
+
+                _buildButton("5"),
+
+                _buildButton("6"),
+
+                _buildButton("×", color: Colors.orange)
+
+              ]),
+
+              Row(children: [
+
+                _buildButton("1"),
+
+                _buildButton("2"),
+
+                _buildButton("3"),
+
+                _buildButton("-", color: Colors.orange)
+
+              ]),
+
+              Row(children: [
+
+                _buildButton("0"),
+
+                _buildButton("."),
+
+                _buildButton("=", color: Colors.green),
+
+                _buildButton("+", color: Colors.orange)
+
+              ]),
+
+              Row(children: [_buildButton("C", color: Colors.red)]),
+
+            ],
+
+          ),
+
+          if (_isBottomBannerLoaded)
+
+            SizedBox(
+
+              height: _bottomBannerAd.size.height.toDouble(),
+
+              width: _bottomBannerAd.size.width.toDouble(),
+
+              child: AdWidget(ad: _bottomBannerAd),
+
+            ),
+
+        ],
+
+      ),
+
+    );
+
+  }
+
+
+
+  // ============================
+
+  // Settings & History Navigation
+
+  // ============================
+
+  void _showSettingsScreen() {
+
+    Navigator.push(
+
+      context,
+
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+
+    );
+
+  }
 
 }
 
@@ -1374,27 +984,7 @@ Widget build(BuildContext context) {
 
 // ============================
 
-// SETTINGS SCREEN NAVIGATION
-
-// ============================
-
-void _showSettingsScreen() {
-
-  Navigator.push(
-
-    context,
-
-    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-
-  );
-
-}
-
-
-
-// ============================
-
-// HISTORY SCREEN
+// History Screen
 
 // ============================
 
@@ -1403,6 +993,8 @@ class HistoryScreen extends StatelessWidget {
   final List<String> history;
 
   const HistoryScreen({super.key, required this.history});
+
+
 
   @override
 
@@ -1434,13 +1026,15 @@ class HistoryScreen extends StatelessWidget {
 
 // ============================
 
-// SETTINGS SCREEN (Placeholder)
+// Settings Screen
 
 // ============================
 
 class SettingsScreen extends StatelessWidget {
 
   const SettingsScreen({super.key});
+
+
 
   @override
 

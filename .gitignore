@@ -1,82 +1,54 @@
-# Flutter / Dart
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
 .dart_tool/
-.packages
-.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-build/
-generated_plugin_registrant.dart
+/build/
+/coverage/
 
-# Android / Gradle
-.android/
-android/build/
-android/app/build/
-android/local.properties
-android/keystore/
-*.iml
+# Symbolication related
+app.*.symbols
 
-# iOS
-ios/Flutter/Flutter.podspec
-ios/Pods/
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+
+flutterbread/
 ios/Runner.xcworkspace/
-ios/build/
-ios/.symlinks/
-ios/Flutter/App.framework
-ios/Flutter/Flutter.framework
-
-# macOS
-macos/Flutter/ephemeral/
-macos/Pods/
-macos/Flutter/Flutter.framework
-macos/build/
-
-# Windows / Linux
 windows/flutter/
-windows/runner/Debug/
-windows/runner/Release/
+windows/flutter/
+yamtar/
+ yamtarr/
 linux/flutter/
-linux/build/
-
-# Web
-/web/.dart_tool/
-web/build/
-
-# IDE / Editor
-.idea/
-.vscode/
-*.iml
-
-# System / personal
-*.log
-*.lock
-*.swp
-*.DS_Store
-*.bak
-*.tmp
-*.old
-*.orig
-*.so
-*.a
-*.o
-*.exe
-*.pyc
-*.pyo
-*.class
-*.jar
-*.war
-*.keystore
-*.pem
-*.p12
-*.crt
-*.der
-*.cert
-*.key
-
-# Node / JS (if any)
-node_modules/
-
-# Ignore your temporary or large folder
-Danacid/
-/flutter/
-/flutterbread/

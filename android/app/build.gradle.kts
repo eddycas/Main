@@ -1,7 +1,9 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services") // ✅ Google Services plugin
+    id("kotlin-android")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services") // ✅ Added for Firebase
 }
 
 android {
@@ -19,28 +21,16 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.eddycas.quickcalc"
-        minSdk = 21
-        targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.0"
-    }
-
-    signingConfigs {
-        create("release") {
-            // These values will come from Codemagic Flutter workflow automatically
-            storeFile = file(System.getenv("CM_KEYSTORE_PATH") ?: "")
-            storePassword = System.getenv("CM_KEYSTORE_PASSWORD") ?: ""
-            keyAlias = System.getenv("CM_KEY_ALIAS") ?: ""
-            keyPassword = System.getenv("CM_KEY_PASSWORD") ?: ""
-        }
+        applicationId = "com.eddycas.quickcalc"  // ✅ Must match google-services.json
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
