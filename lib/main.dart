@@ -16,6 +16,10 @@ import 'package:math_expressions/math_expressions.dart';
 
 import 'package:device_info_plus/device_info_plus.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+
+
 import 'firebase_options.dart';
 
 
@@ -24,11 +28,7 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-
-    options: DefaultFirebaseOptions.currentPlatform,
-
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await MobileAds.instance.initialize();
 
@@ -38,17 +38,41 @@ void main() async {
 
 
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
 
   const MyApp({super.key});
 
 
 
+  @override
+
+  State<MyApp> createState() => _MyAppState();
+
+}
+
+
+
+class _MyAppState extends State<MyApp> {
+
+  ThemeMode _themeMode = ThemeMode.dark; // Default is black theme
+
+
+
+  void updateTheme(ThemeMode mode) {
+
+    setState(() {
+
+      _themeMode = mode;
+
+    });
+
+  }
+
+
+
   static FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
-  static FirebaseAnalyticsObserver observer =
-
-      FirebaseAnalyticsObserver(analytics: analytics);
+  static FirebaseAnalyticsObserver observer = FirebaseAnalyticsObserver(analytics: analytics);
 
 
 
@@ -60,7 +84,15 @@ class MyApp extends StatelessWidget {
 
       title: 'Quickcalc',
 
-      theme: ThemeData.dark().copyWith(
+      themeMode: _themeMode,
+
+      theme: ThemeData.light().copyWith(
+
+        scaffoldBackgroundColor: Colors.white,
+
+      ),
+
+      darkTheme: ThemeData.dark().copyWith(
 
         scaffoldBackgroundColor: Colors.black,
 
@@ -78,7 +110,7 @@ class MyApp extends StatelessWidget {
 
       navigatorObservers: [observer],
 
-      home: const SignInScreen(),
+      home: SignInScreen(onThemeChange: updateTheme),
 
     );
 
@@ -88,11 +120,17 @@ class MyApp extends StatelessWidget {
 
 
 
-// ✅ Sign-In Screen (Email + Google)
+// ============================
+
+// Sign-In Screen
+
+// ============================
 
 class SignInScreen extends StatefulWidget {
 
-  const SignInScreen({super.key});
+  final Function(ThemeMode) onThemeChange;
+
+  const SignInScreen({super.key, required this.onThemeChange});
 
 
 
@@ -120,9 +158,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     try {
 
-      UserCredential user = await FirebaseAuth.instance
-
-          .signInWithEmailAndPassword(
+      UserCredential user = await FirebaseAuth.instance.signInWithEmailAndPassword(
 
         email: emailController.text.trim(),
 
@@ -150,9 +186,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     try {
 
-      UserCredential user = await FirebaseAuth.instance
-
-          .createUserWithEmailAndPassword(
+      UserCredential user = await FirebaseAuth.instance.createUserWithEmailAndPassword(
 
         email: emailController.text.trim(),
 
@@ -182,9 +216,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
 
@@ -194,9 +226,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       );
 
-      UserCredential user =
-
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      UserCredential user = await FirebaseAuth.instance.signInWithCredential(credential);
 
       _navigateToCalculator(user.user);
 
@@ -260,31 +290,15 @@ class _SignInScreenState extends State<SignInScreen> {
 
             children: [
 
-              const Text("Quickcalc Login",
-
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const Text("Quickcalc Login", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
 
               const SizedBox(height: 20),
 
-              TextField(
-
-                controller: emailController,
-
-                decoration: const InputDecoration(labelText: "Email"),
-
-              ),
+              TextField(controller: emailController, decoration: const InputDecoration(labelText: "Email")),
 
               const SizedBox(height: 12),
 
-              TextField(
-
-                controller: passwordController,
-
-                decoration: const InputDecoration(labelText: "Password"),
-
-                obscureText: true,
-
-              ),
+              TextField(controller: passwordController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
 
               const SizedBox(height: 20),
 
@@ -296,21 +310,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                       children: [
 
-                        ElevatedButton(
+                        ElevatedButton(onPressed: _signInWithEmail, child: const Text("Sign In")),
 
-                          onPressed: _signInWithEmail,
-
-                          child: const Text("Sign In"),
-
-                        ),
-
-                        ElevatedButton(
-
-                          onPressed: _signUpWithEmail,
-
-                          child: const Text("Sign Up"),
-
-                        ),
+                        ElevatedButton(onPressed: _signUpWithEmail, child: const Text("Sign Up")),
 
                         const Divider(height: 30),
 
@@ -322,11 +324,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                           label: const Text("Sign In with Google"),
 
-                          style: ElevatedButton.styleFrom(
-
-                            backgroundColor: Colors.redAccent,
-
-                          ),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
 
                         ),
 
@@ -350,7 +348,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
 
 
-// ✅ Calculator Screen
+// ============================
+
+// Calculator Screen
+
+// ============================
 
 class CalculatorScreen extends StatefulWidget {
 
@@ -422,9 +424,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     _getDeviceInfo();
 
+    _loadHistory();
+
   }
 
 
+
+  // ============================
+
+  // Device Info
+
+  // ============================
 
   Future<void> _getDeviceInfo() async {
 
@@ -432,15 +442,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
     if (Theme.of(context).platform == TargetPlatform.android) {
 
-      AndroidDeviceInfo android = await deviceInfoPlugin.androidInfo;
+      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
 
-      deviceInfo = "${android.manufacturer} ${android.model}";
+      deviceInfo = "${androidInfo.manufacturer} ${androidInfo.model}";
 
     } else {
 
-      IosDeviceInfo ios = await deviceInfoPlugin.iosInfo;
+      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
 
-      deviceInfo = "${ios.name} ${ios.model}";
+      deviceInfo = "${iosInfo.name} ${iosInfo.model}";
 
     }
 
@@ -448,15 +458,41 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  bool get _isPremium =>
+  // ============================
 
-      premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
+  // Persistent History
 
-  
+  // ============================
 
-// ============================
+  Future<void> _loadHistory() async {
 
-  // Calculator Button Logic
+    final prefs = await SharedPreferences.getInstance();
+
+    _history.clear();
+
+    _history.addAll(prefs.getStringList('calc_history') ?? []);
+
+  }
+
+
+
+  Future<void> _saveHistory() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    prefs.setStringList('calc_history', _history);
+
+  }
+
+
+
+  bool get _isPremium => premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
+
+
+
+  // ============================
+
+  // Calculator Logic
 
   // ============================
 
@@ -476,9 +512,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
           Parser p = Parser();
 
-          Expression exp =
-
-              p.parse(_expression.replaceAll("×", "*").replaceAll("÷", "/"));
+          Expression exp = p.parse(_expression.replaceAll("×", "*").replaceAll("÷", "/"));
 
           ContextModel cm = ContextModel();
 
@@ -514,35 +548,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   // ============================
 
-  // Persistent History
-
-  // ============================
-
-  Future<void> _loadHistory() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    _history.clear();
-
-    _history.addAll(prefs.getStringList('calc_history') ?? []);
-
-  }
-
-
-
-  Future<void> _saveHistory() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    prefs.setStringList('calc_history', _history);
-
-  }
-
-
-
-  // ============================
-
-  // Ads Loading
+  // Ads
 
   // ============================
 
@@ -610,12 +616,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  // ============================
-
-  // Interstitial & Rewarded
-
-  // ============================
-
   void _loadInterstitialAd() {
 
     InterstitialAd.load(
@@ -634,9 +634,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
           ad.fullScreenContentCallback = FullScreenContentCallback(
 
-            onAdShowedFullScreenContent: (_) =>
-
-                _logAdClick("interstitial", revenue: 0.15),
+            onAdShowedFullScreenContent: (_) => _logAdClick("interstitial", revenue: 0.15),
 
             onAdDismissedFullScreenContent: (_) {
 
@@ -730,13 +728,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   }
 
+}
+
 
 
 // ============================
 
-  // Build Calculator Buttons
+// Calculator Buttons & UI
 
-  // ============================
+// ============================
+
+extension CalculatorUI on _CalculatorScreenState {
 
   Widget _buildButton(String text, {Color color = Colors.white30}) {
 
@@ -754,11 +756,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
             backgroundColor: color,
 
-            shape: RoundedRectangleBorder(
-
-              borderRadius: BorderRadius.circular(12),
-
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 
             padding: const EdgeInsets.symmetric(vertical: 20),
 
@@ -775,12 +773,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
 
-
-  // ============================
-
-  // Build UI
-
-  // ============================
 
   @override
 
@@ -800,21 +792,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
             icon: const Icon(Icons.history),
 
-            onPressed: () {
+            onPressed: () => Navigator.push(
 
-              Navigator.push(
+              context,
 
-                context,
+              MaterialPageRoute(builder: (_) => HistoryScreen(history: _history)),
 
-                MaterialPageRoute(
-
-                  builder: (_) => HistoryScreen(history: _history),
-
-                ),
-
-              );
-
-            },
+            ),
 
           ),
 
@@ -822,7 +806,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
             icon: const Icon(Icons.settings),
 
-            onPressed: () => _showSettingsScreen(),
+            onPressed: _showSettingsScreen,
 
           ),
 
@@ -862,15 +846,11 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
                 children: [
 
-                  Text(_expression,
-
-                      style: const TextStyle(fontSize: 32, color: Colors.white70)),
+                  Text(_expression, style: const TextStyle(fontSize: 32, color: Colors.white70)),
 
                   const SizedBox(height: 10),
 
-                  Text(_result,
-
-                      style: const TextStyle(fontSize: 48, color: Colors.white)),
+                  Text(_result, style: const TextStyle(fontSize: 48, color: Colors.white)),
 
                 ],
 
@@ -884,53 +864,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
             children: [
 
-              Row(children: [
+              Row(children: [_buildButton("7"), _buildButton("8"), _buildButton("9"), _buildButton("÷", color: Colors.orange)]),
 
-                _buildButton("7"),
+              Row(children: [_buildButton("4"), _buildButton("5"), _buildButton("6"), _buildButton("×", color: Colors.orange)]),
 
-                _buildButton("8"),
+              Row(children: [_buildButton("1"), _buildButton("2"), _buildButton("3"), _buildButton("-", color: Colors.orange)]),
 
-                _buildButton("9"),
-
-                _buildButton("÷", color: Colors.orange)
-
-              ]),
-
-              Row(children: [
-
-                _buildButton("4"),
-
-                _buildButton("5"),
-
-                _buildButton("6"),
-
-                _buildButton("×", color: Colors.orange)
-
-              ]),
-
-              Row(children: [
-
-                _buildButton("1"),
-
-                _buildButton("2"),
-
-                _buildButton("3"),
-
-                _buildButton("-", color: Colors.orange)
-
-              ]),
-
-              Row(children: [
-
-                _buildButton("0"),
-
-                _buildButton("."),
-
-                _buildButton("=", color: Colors.green),
-
-                _buildButton("+", color: Colors.orange)
-
-              ]),
+              Row(children: [_buildButton("0"), _buildButton("."), _buildButton("=", color: Colors.green), _buildButton("+", color: Colors.orange)]),
 
               Row(children: [_buildButton("C", color: Colors.red)]),
 
@@ -960,19 +900,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  // ============================
-
-  // Settings & History Navigation
-
-  // ============================
-
   void _showSettingsScreen() {
 
     Navigator.push(
 
       context,
 
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      MaterialPageRoute(builder: (_) => SettingsScreen()),
 
     );
 
@@ -1008,11 +942,7 @@ class HistoryScreen extends StatelessWidget {
 
         itemCount: history.length,
 
-        itemBuilder: (context, index) {
-
-          return ListTile(title: Text(history[index]));
-
-        },
+        itemBuilder: (context, index) => ListTile(title: Text(history[index])),
 
       ),
 
@@ -1030,9 +960,33 @@ class HistoryScreen extends StatelessWidget {
 
 // ============================
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
 
   const SettingsScreen({super.key});
+
+
+
+  @override
+
+  State<SettingsScreen> createState() => _SettingsScreenState();
+
+}
+
+
+
+class _SettingsScreenState extends State<SettingsScreen> {
+
+  Color _themeColor = Colors.black;
+
+
+
+  void _changeTheme(Color color) {
+
+    setState(() => _themeColor = color);
+
+    // You can apply this theme to the app dynamically later
+
+  }
 
 
 
@@ -1044,7 +998,51 @@ class SettingsScreen extends StatelessWidget {
 
       appBar: AppBar(title: const Text("Settings")),
 
-      body: const Center(child: Text("Settings go here")),
+      body: Padding(
+
+        padding: const EdgeInsets.all(16.0),
+
+        child: Column(
+
+          crossAxisAlignment: CrossAxisAlignment.start,
+
+          children: [
+
+            const Text("Choose Theme:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 10),
+
+            Wrap(
+
+              spacing: 10,
+
+              children: [
+
+                ElevatedButton(onPressed: () => _changeTheme(Colors.grey), child: const Text("Grey")),
+
+                ElevatedButton(onPressed: () => _changeTheme(Colors.redAccent), child: const Text("Wine")),
+
+                ElevatedButton(onPressed: () => _changeTheme(Colors.white), child: const Text("White")),
+
+                ElevatedButton(onPressed: () => _changeTheme(Colors.black), child: const Text("Black")),
+
+              ],
+
+            ),
+
+            const SizedBox(height: 30),
+
+            const Text("Premium Services", style: TextStyle(fontSize: 18)),
+
+            const SizedBox(height: 10),
+
+            const Text(" "), // Placeholder for future premium features
+
+          ],
+
+        ),
+
+      ),
 
     );
 
