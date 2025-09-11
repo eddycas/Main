@@ -1,12 +1,3 @@
-ls
-nano ~/.bashrc
-# Custom colored prompt
-PS1='\[\e[1;32m\]\u@\h:\w\$ \[\e[0m\]'
-alias ls='ls --color=auto'
-PS1='\[\e[1;32m\]\u@\h:\w\$ \[\e[0m\
-nano ~/.bashrc
-source ~/.bashrc
-ls
 cd lib
 ls
 nano main.dart
@@ -439,4 +430,71 @@ flutter pub upgrade
 git add .
 git add lib/main.dart lib/firebase_options.dart pubspec.yaml
 git commit -m "Update app: main.dart, firebase options, pubspec"
+git push origin main
+whoami
+uname -a
+echo $PATH
+apt update
+apt upgrade -y
+apt install git curl unzip xz-utils zip -y
+cd ~
+git clone https://github.com/flutter/flutter.git -b stable
+export PATH="$HOME/flutter/bin:$PATH"
+echo 'export PATH="$HOME/flutter/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+flutter doctor
+flutter pub get
+flutter pub run flutter_launcher_icons:main
+ls
+cd assets 
+ls
+nano app_icon.png
+ls
+cd icon
+ls
+nano app_icon.png
+ls
+cd
+flutter pub get
+flutter pub run flutter_launcher_icons:main
+nano pubspec.yaml
+nano pubspec.yaml
+cd downloads
+cd ~/Downloads
+ls
+termux-setup-storage
+~/storage/downloads
+ls /storage
+ls /storage/emulated/0/Download
+cp /storage/emulated/0/Download/Icon.jpg ~/assets/icon/
+cd ~/assets/icon
+convert Icon.jpg app_icon.png
+cd ~/assets/icon
+magick Icon.jpg app_icon.png
+ls
+nano icon.png
+nano app_icon.png
+cd
+flutter pub get
+flutter pub run flutter_launcher_icons:main
+cd assets
+ls
+git status
+git add .
+git commit -m "Update launcher icons for Android and iOS"
+git push origin main
+cd
+cd ~/android/app/src/main/
+ls
+nano AndroidManifest.xml
+cd
+git status
+cd ~/android/app/src/main/
+nano AndroidManifest.xml
+cd
+git add android/app/src/main/AndroidManifest.xml
+git add android/app/src/main/res/mipmap-*
+git add pubspec.yaml pubspec.lock
+git add ios/Runner/Assets.xcassets/AppIcon.appiconset/*
+git commit -m "Update launcher icons and remove ic_launcher_round from AndroidManifest"
 git push origin main
