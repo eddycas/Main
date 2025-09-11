@@ -24,7 +24,9 @@ void main() async {
 
   await MobileAds.instance.initialize();
 
-  runApp(const MyApp());
+  User? user = FirebaseAuth.instance.currentUser;
+
+  runApp(MyApp(initialUser: user));
 
 }
 
@@ -32,7 +34,11 @@ void main() async {
 
 class MyApp extends StatefulWidget {
 
-  const MyApp({super.key});
+  final User? initialUser;
+
+  const MyApp({super.key, this.initialUser});
+
+
 
   @override
 
@@ -45,8 +51,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
 
   ThemeMode _themeMode = ThemeMode.dark;
-
-
 
   void updateTheme(ThemeMode mode) => setState(() => _themeMode = mode);
 
@@ -82,51 +86,11 @@ class _MyAppState extends State<MyApp> {
 
       ),
 
-      home: const LandingScreen(),
+      home: widget.initialUser != null
 
-    );
+          ? CalculatorScreen(user: widget.initialUser!)
 
-  }
-
-}
-
-
-
-class LandingScreen extends StatelessWidget {
-
-  const LandingScreen({super.key});
-
-
-
-  @override
-
-  Widget build(BuildContext context) {
-
-    return FutureBuilder<User?>(
-
-      future: Future.value(FirebaseAuth.instance.currentUser),
-
-      builder: (context, snapshot) {
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-        } else {
-
-          if (snapshot.hasData && snapshot.data != null) {
-
-            return CalculatorScreen(user: snapshot.data!);
-
-          } else {
-
-            return const SignInScreen();
-
-          }
-
-        }
-
-      },
+          : const SignInScreen(),
 
     );
 
@@ -139,8 +103,6 @@ class LandingScreen extends StatelessWidget {
 class SignInScreen extends StatefulWidget {
 
   const SignInScreen({super.key});
-
-
 
   @override
 
@@ -368,8 +330,6 @@ class CalculatorScreen extends StatefulWidget {
 
   const CalculatorScreen({super.key, required this.user});
 
-
-
   @override
 
   State<CalculatorScreen> createState() => _CalculatorScreenState();
@@ -389,8 +349,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   final List<String> _history = [];
 
   DateTime? premiumUntil;
-
-
 
   late BannerAd _topBannerAd;
 
@@ -474,7 +432,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
 
 
-  bool get _isPremium => premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
+bool get _isPremium => premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
 
 
 
@@ -560,27 +518,27 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _loadBottomBanner() {
 
-  _bottomBannerAd = BannerAd(
+    _bottomBannerAd = BannerAd(
 
-    adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
 
-    size: AdSize.banner,
+      size: AdSize.banner,
 
-    request: const AdRequest(),
+      request: const AdRequest(),
 
-    listener: BannerAdListener(
+      listener: BannerAdListener(
 
-      onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
+        onAdLoaded: (_) => setState(() => _isBottomBannerLoaded = true),
 
-      onAdFailedToLoad: (ad, _) => ad.dispose(),
+        onAdFailedToLoad: (ad, _) => ad.dispose(),
 
-      onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
+        onAdOpened: (_) => _logAdClick("bottom_banner", revenue: 0.05),
 
-    ),
+      ),
 
-  )..load();
+    )..load();
 
-}
+  }
 
 
 
@@ -772,7 +730,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
               Navigator.pushReplacement(
 
-                  context, MaterialPageRoute(builder: (_) => const LandingScreen()));
+                  context, MaterialPageRoute(builder: (_) => const SignInScreen()));
 
             },
 
