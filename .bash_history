@@ -1,38 +1,3 @@
-cd lib
-ls
-nano main.dart
-nano main.dart
-cd
-ls
-cd android
-ls
-cd app
-ls
-cd src
-ls
-cd main
-ls
-nano AndroidManifest.xml
-ls
-ls kotlin
-cd kotlin
-cd com
-ls
-cd example
-ld
-ls
-cd eddy
-ls
-nano MainActivity.kt
-cd
-ls
-nano pubspec.yaml
-flutter pub get
-~/flutter
-export PATH="$PATH:$HOME/flutter/bin"
-flutter --version
-ls
-git checkout main
 git remote remove origin  # remove old remote
 git remote add origin https://github.com/eddycas/Main.git  # add new remote
 ls
@@ -497,4 +462,39 @@ git add android/app/src/main/res/mipmap-*
 git add pubspec.yaml pubspec.lock
 git add ios/Runner/Assets.xcassets/AppIcon.appiconset/*
 git commit -m "Update launcher icons and remove ic_launcher_round from AndroidManifest"
+git push origin main
+cd lib
+> main.dart
+nano main.darr
+nano main.dart
+cd
+git add .
+git commit -m"update main.dart"
+git push origin main
+cd android
+ls
+cd gradle
+ls
+cd 
+cd ~/android/
+nano gradle.properties
+cd
+git add .
+git commit -m"update gradle"
+git push origin main
+cd android
+nano gradle.properties
+cd 
+git add .
+git commit -m"gradle properties"
+git push origin main
+cd lib
+nano main.dart
+cat main.dart
+cat main.dart
+> main.dart
+nano main.dart
+cd
+git add .
+git commit -m"update main.dart"
 git push origin main
