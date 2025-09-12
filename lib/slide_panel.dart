@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'calculator_home.dart';
 import 'premium_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -72,7 +71,7 @@ class SlidePanel extends StatelessWidget {
                   if (user != null && !premiumManager.isPremium)
                     ListTile(
                         title: const Text("Unlock Scientific Tools (1hr)"),
-                        subtitle: Text("Watch ad to unlock"),
+                        subtitle: const Text("Watch ad to unlock"),
                         onTap: showRewarded),
                   Expanded(
                     child: ListView(

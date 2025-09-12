@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'premium_manager.dart';
 
@@ -37,7 +38,10 @@ class AdsManager {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) => onLoaded(ad),
         onAdFailedToLoad: (_) {
-          Future.delayed(const Duration(seconds: 15), () => loadRewardedAd(onLoaded: onLoaded));
+          Future.delayed(
+            const Duration(seconds: 15),
+            () => loadRewardedAd(onLoaded: onLoaded),
+          );
         },
       ),
     );

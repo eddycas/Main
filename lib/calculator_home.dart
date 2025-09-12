@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'slide_panel.dart';
 import 'calculator_keypad.dart';
 import 'calculator_logic.dart';
@@ -12,76 +13,76 @@ class CalculatorHome extends StatefulWidget {
   const CalculatorHome({super.key, required this.toggleTheme});
 
   @override
-  State<CalculatorHome> createState() => _CalculatorHomeState();
+  CalculatorHomeState createState() => CalculatorHomeState();
 }
 
-class _CalculatorHomeState extends State<CalculatorHome> {
+class CalculatorHomeState extends State<CalculatorHome> {
   // -------------------- VARIABLES --------------------
-  String _expression = "";
-  String _result = "0";
-  final List<String> _history = [];
-  double _memory = 0;
+  String expression = "";
+  String result = "0";
+  final List<String> history = [];
+  double memory = 0;
 
-  late double _screenWidth;
-  late double _screenHeight;
-  late double _panelWidth;
-  bool _panelOpen = false;
+  late double screenWidth;
+  late double screenHeight;
+  late double panelWidth;
+  bool panelOpen = false;
 
-  BannerAd? _topBanner;
-  BannerAd? _bottomBanner;
-  bool _isTopBannerLoaded = false;
-  bool _isBottomBannerLoaded = false;
+  BannerAd? topBanner;
+  BannerAd? bottomBanner;
+  bool isTopBannerLoaded = false;
+  bool isBottomBannerLoaded = false;
 
-  RewardedAd? _rewardedAd;
-  bool _isRewardedReady = false;
+  RewardedAd? rewardedAd;
+  bool isRewardedReady = false;
 
-  User? _user;
+  User? user;
 
   // -------------------- MANAGERS --------------------
-  late PremiumManager _premiumManager;
-  late AdsManager _adsManager;
-  late AuthManager _authManager;
+  late PremiumManager premiumManager;
+  late AdsManager adsManager;
+  late AuthManager authManager;
 
   @override
   void initState() {
     super.initState();
 
-    _premiumManager = PremiumManager();
-    _adsManager = AdsManager();
-    _authManager = AuthManager();
+    premiumManager = PremiumManager();
+    adsManager = AdsManager();
+    authManager = AuthManager();
 
-    _user = FirebaseAuth.instance.currentUser;
+    user = FirebaseAuth.instance.currentUser;
 
-    _authManager.initAuthListener((u) {
+    authManager.initAuthListener((u) {
       setState(() {
-        _user = u;
+        user = u;
       });
-      _premiumManager.loadPremium(u);
+      premiumManager.loadPremium(u);
     });
 
-    _adsManager.loadTopBanner(onLoaded: () => setState(() => _isTopBannerLoaded = true));
-    _adsManager.loadBottomBanner(onLoaded: () => setState(() => _isBottomBannerLoaded = true));
-    _adsManager.loadRewardedAd(onLoaded: (ad) {
-      _rewardedAd = ad;
-      _isRewardedReady = true;
+    adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
+    adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
+    adsManager.loadRewardedAd(onLoaded: (ad) {
+      rewardedAd = ad;
+      isRewardedReady = true;
     });
   }
 
   @override
   void dispose() {
-    _adsManager.disposeAll();
-    _premiumManager.dispose();
-    _authManager.dispose();
+    adsManager.disposeAll();
+    premiumManager.dispose();
+    authManager.dispose();
     super.dispose();
   }
 
-  void _togglePanel() => setState(() => _panelOpen = !_panelOpen);
+  void togglePanel() => setState(() => panelOpen = !panelOpen);
 
   @override
   Widget build(BuildContext context) {
-    _screenWidth = MediaQuery.of(context).size.width;
-    _screenHeight = MediaQuery.of(context).size.height;
-    _panelWidth = _screenWidth * 0.7;
+    screenWidth = MediaQuery.of(context).size.width;
+    screenHeight = MediaQuery.of(context).size.height;
+    panelWidth = screenWidth * 0.7;
 
     return Scaffold(
       appBar: AppBar(title: const Text("QuickCalc")),
@@ -89,16 +90,16 @@ class _CalculatorHomeState extends State<CalculatorHome> {
         children: [
           Column(
             children: [
-              if (_isTopBannerLoaded && _adsManager.topBanner != null)
+              if (isTopBannerLoaded && adsManager.topBanner != null)
                 SizedBox(
-                  width: _adsManager.topBanner!.size.width.toDouble(),
-                  height: _adsManager.topBanner!.size.height.toDouble(),
-                  child: AdWidget(ad: _adsManager.topBanner!),
+                  width: adsManager.topBanner!.size.width.toDouble(),
+                  height: adsManager.topBanner!.size.height.toDouble(),
+                  child: AdWidget(ad: adsManager.topBanner!),
                 ),
               Expanded(
                 child: Center(
                   child: Text(
-                    _result,
+                    result,
                     style: const TextStyle(fontSize: 48),
                   ),
                 ),
@@ -110,30 +111,30 @@ class _CalculatorHomeState extends State<CalculatorHome> {
                   });
                 },
               ),
-              if (_isBottomBannerLoaded && _adsManager.bottomBanner != null)
+              if (isBottomBannerLoaded && adsManager.bottomBanner != null)
                 SizedBox(
-                  width: _adsManager.bottomBanner!.size.width.toDouble(),
-                  height: _adsManager.bottomBanner!.size.height.toDouble(),
-                  child: AdWidget(ad: _adsManager.bottomBanner!),
+                  width: adsManager.bottomBanner!.size.width.toDouble(),
+                  height: adsManager.bottomBanner!.size.height.toDouble(),
+                  child: AdWidget(ad: adsManager.bottomBanner!),
                 ),
             ],
           ),
           SlidePanel(
-            panelOpen: _panelOpen,
-            panelWidth: _panelWidth,
-            screenHeight: _screenHeight,
-            togglePanel: _togglePanel,
-            history: _history,
-            user: _user,
-            premiumManager: _premiumManager,
-            signIn: _authManager.signInWithGoogle,
-            signOut: _authManager.signOut,
+            panelOpen: panelOpen,
+            panelWidth: panelWidth,
+            screenHeight: screenHeight,
+            togglePanel: togglePanel,
+            history: history,
+            user: user,
+            premiumManager: premiumManager,
+            signIn: authManager.signInWithGoogle,
+            signOut: authManager.signOut,
             showRewarded: () async {
-              if (_rewardedAd != null) {
-                await _adsManager.showRewardedAd(_rewardedAd!, _premiumManager);
+              if (rewardedAd != null) {
+                await adsManager.showRewardedAd(rewardedAd!, premiumManager);
                 setState(() {
-                  _rewardedAd = null;
-                  _isRewardedReady = false;
+                  rewardedAd = null;
+                  isRewardedReady = false;
                 });
               }
             },
@@ -143,4 +144,3 @@ class _CalculatorHomeState extends State<CalculatorHome> {
     );
   }
 }
-
