@@ -5,7 +5,7 @@ import 'calculator_keypad.dart';
 import 'calculator_logic.dart';
 import 'ads_manager.dart';
 import 'premium_manager.dart';
-import 'auth_manager.dart';
+import 'auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CalculatorHome extends StatefulWidget {
@@ -53,10 +53,11 @@ class CalculatorHomeState extends State<CalculatorHome> {
     premiumManager = PremiumManager();
     adsManager = AdsManager();
 
-    // Use the singleton instance
+    // Get current user
     user = FirebaseAuth.instance.currentUser;
 
-    AuthManager.instance.initAuthListener((u) {
+    // Listen to auth state changes
+    FirebaseAuth.instance.authStateChanges().listen((u) {
       setState(() {
         user = u;
       });
@@ -67,7 +68,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
 
-    // Load rewarded
+    // Load rewarded ad
     adsManager.loadRewardedAd(onLoaded: (ad) {
       rewardedAd = ad;
       isRewardedReady = true;
@@ -82,7 +83,6 @@ class CalculatorHomeState extends State<CalculatorHome> {
   void dispose() {
     adsManager.disposeAll();
     premiumManager.dispose();
-    AuthManager.instance.dispose();
     super.dispose();
   }
 
