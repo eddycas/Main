@@ -1,4 +1,4 @@
-    import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_manager.dart';
@@ -49,34 +49,56 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
     return "Something went wrong";
   }
 
-  Future<void> handleSignIn() async => _performAction(() => AuthManager.instance.signInWithGoogle(), "Signed in successfully", "Sign in failed");
-  Future<void> handleSignUp() async {
-    await _performAction(() async {
-      final credential = await AuthManager.instance.signInWithGoogleAndReturnCredential();
-      return credential?.additionalUserInfo?.isNewUser ?? false;
-    }, "Account created successfully", "Sign up failed", fallbackMessage: "Account already exists, signed in");
-  }
-  Future<void> handleSignOut() async => _performAction(() => AuthManager.instance.signOut(), "Signed out successfully", "Sign out failed");
-  Future<void> handleShowRewarded() async => _performAction(() => widget.showRewarded(), "Premium unlocked!", "Failed to unlock premium");
-
-  Future<void> _performAction(Future<dynamic> Function() action, String successMsg, String failMsg, {String? fallbackMessage}) async {
+  // ------------------ Auth ------------------
+  Future<void> handleGoogleSignIn() async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
-      final result = await action();
-      if (result == true || fallbackMessage == null) {
-        showMessage(successMsg);
-      } else if (fallbackMessage.isNotEmpty) {
-        showMessage(fallbackMessage);
+      final credential = await AuthManager.instance.signInWithGoogleAndReturnCredential();
+
+      if (credential != null) {
+        final isNew = credential.additionalUserInfo?.isNewUser ?? false;
+        showMessage(isNew ? "Account created!" : "Signed in successfully");
+      } else {
+        showMessage("Sign in failed: No credential returned");
       }
     } catch (e) {
-      showMessage("$failMsg: ${getFriendlyError(e)}");
+      showMessage("Sign in failed: ${getFriendlyError(e)}");
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
 
+  Future<void> handleSignOut() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      await AuthManager.instance.signOut();
+      showMessage("Signed out successfully");
+    } catch (e) {
+      showMessage("Sign out failed: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> handleShowRewarded() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      await widget.showRewarded();
+      showMessage("Premium unlocked!");
+    } catch (e) {
+      showMessage("Failed to unlock premium: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  // ------------------ Drag ------------------
   void _onVerticalDragUpdate(DragUpdateDetails details) {
     setState(() {
       _dragOffset += details.primaryDelta ?? 0;
@@ -84,14 +106,13 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
-    if (_dragOffset < -50) {
-      widget.togglePanel(); // Open panel
-    } else if (_dragOffset > 50) {
-      widget.togglePanel(); // Close panel
+    if (_dragOffset < -50 || _dragOffset > 50) {
+      widget.togglePanel();
     }
     _dragOffset = 0.0;
   }
 
+  // ------------------ UI ------------------
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -155,14 +176,9 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
                         // Auth buttons
                         if (widget.user == null) ...[
                           ListTile(
-                            title: const Text("Sign In"),
+                            title: const Text("Sign in with Google"),
                             enabled: !_isProcessing,
-                            onTap: handleSignIn,
-                          ),
-                          ListTile(
-                            title: const Text("Sign Up"),
-                            enabled: !_isProcessing,
-                            onTap: handleSignUp,
+                            onTap: handleGoogleSignIn,
                           ),
                         ] else ...[
                           ListTile(title: Text("Signed in as ${widget.user!.email}")),
