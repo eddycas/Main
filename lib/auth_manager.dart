@@ -1,88 +1,68 @@
-import 'dart:async';
-import 'dart:developer' as developer;
+// lib/auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 
-class AuthException implements Exception {
-  final String message;
-  AuthException(this.message);
-  @override
-  String toString() => message;
-}
-
-class AuthManager {
-  // Singleton pattern
-  AuthManager._privateConstructor();
-  static final AuthManager instance = AuthManager._privateConstructor();
+class AuthService {
+  // Singleton instance
+  AuthService._privateConstructor();
+  static final AuthService instance = AuthService._privateConstructor();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  StreamSubscription<User?>? _authSub;
 
-  /// Initialize auth state listener
-  void initAuthListener(void Function(User?) onChange) {
-    _authSub = _auth.authStateChanges().listen(onChange);
-  }
-
-  /// Sign in with Google
-  Future<void> signInWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return; // user cancelled
-
-      final googleAuth = await googleUser.authentication;
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw AuthException("Missing Google authentication tokens.");
-      }
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await _auth.signInWithCredential(credential);
-    } catch (e, st) {
-      developer.log("Sign-in error", error: e, stackTrace: st);
-      throw AuthException("Failed to sign in with Google: $e");
-    }
-  }
-
-  /// Sign in and return UserCredential (to check if new user)
+  // -------------------- SIGN IN --------------------
+  /// Signs in the user with Google and returns the Firebase credential
   Future<UserCredential?> signInWithGoogleAndReturnCredential() async {
     try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-
-      final googleAuth = await googleUser.authentication;
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw AuthException("Missing Google authentication tokens.");
+      // Trigger Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('Google sign-in cancelled');
+        return null;
       }
 
+      // Obtain authentication details
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      return await _auth.signInWithCredential(credential);
-    } catch (e, st) {
-      developer.log("Sign-up error", error: e, stackTrace: st);
-      return null;
+      // Sign in with Firebase
+      final userCredential =
+          await _auth.signInWithCredential(credential);
+      debugPrint(
+          'Signed in as: ${userCredential.user?.email}, New user: ${userCredential.additionalUserInfo?.isNewUser}');
+      return userCredential;
+    } catch (e) {
+      debugPrint('Sign-in failed: $e');
+      rethrow; // allow SlidePanel to catch and show error
     }
   }
 
-  /// Sign out from both Firebase and Google
+  // -------------------- SIMPLE SIGN IN --------------------
+  /// Signs in the user with Google (doesn't return credential)
+  Future<void> signInWithGoogle() async {
+    try {
+      await signInWithGoogleAndReturnCredential();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // -------------------- SIGN OUT --------------------
   Future<void> signOut() async {
     try {
       await _auth.signOut();
       await _googleSignIn.signOut();
-    } catch (e, st) {
-      developer.log("Sign-out error", error: e, stackTrace: st);
-      throw AuthException("Failed to sign out: $e");
+      debugPrint('Signed out successfully');
+    } catch (e) {
+      debugPrint('Sign-out failed: $e');
+      rethrow;
     }
-  }
-
-  /// Dispose auth listener
-  Future<void> dispose() async {
-    await _authSub?.cancel();
   }
 }
