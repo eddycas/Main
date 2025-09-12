@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth_manager.dart';
+import 'auth_service.dart'; // <- Updated import
 import 'premium_manager.dart';
 
 class SlidePanel extends StatefulWidget {
@@ -39,9 +39,7 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
   // ------------------ Helpers ------------------
   void showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String getFriendlyError(Object e) {
@@ -55,7 +53,8 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
     setState(() => _isProcessing = true);
 
     try {
-      final credential = await AuthManager.instance.signInWithGoogleAndReturnCredential();
+      // Use AuthService for Google Sign-in (replace with your actual method)
+      final credential = await AuthService.signInWithGoogle();
 
       if (credential != null) {
         final isNew = credential.additionalUserInfo?.isNewUser ?? false;
@@ -75,7 +74,7 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
     setState(() => _isProcessing = true);
 
     try {
-      await AuthManager.instance.signOut();
+      await FirebaseAuth.instance.signOut();
       showMessage("Signed out successfully");
     } catch (e) {
       showMessage("Sign out failed: ${getFriendlyError(e)}");
@@ -117,7 +116,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Dimmed background
         if (widget.panelOpen)
           GestureDetector(
             onTap: widget.togglePanel,
@@ -130,8 +128,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
               ),
             ),
           ),
-
-        // Panel handle
         Positioned(
           right: 0,
           top: widget.screenHeight * 0.5 - 30,
@@ -147,8 +143,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
             ),
           ),
         ),
-
-        // Sliding panel
         AnimatedPositioned(
           duration: const Duration(milliseconds: 200),
           right: widget.panelOpen ? 0 : -widget.panelWidth,
@@ -166,14 +160,11 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
                     color: Colors.white,
                     child: Column(
                       children: [
-                        // Theme toggle
                         ListTile(
                           title: const Text("Toggle Theme"),
                           onTap: widget.toggleTheme,
                         ),
                         const Divider(),
-
-                        // Auth buttons
                         if (widget.user == null) ...[
                           ListTile(
                             title: const Text("Sign in with Google"),
@@ -196,8 +187,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
                             ),
                         ],
                         const Divider(),
-
-                        // History list
                         if (widget.user != null)
                           Expanded(
                             child: ListView.builder(
@@ -210,8 +199,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
                       ],
                     ),
                   ),
-
-                  // Loading indicator
                   if (_isProcessing)
                     Container(
                       color: Colors.black.withOpacity(0.25),
