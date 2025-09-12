@@ -38,8 +38,6 @@ class QuickCalcApp extends StatefulWidget {
 
   const QuickCalcApp({super.key});
 
-
-
   @override
 
   State<QuickCalcApp> createState() => _QuickCalcAppState();
@@ -54,11 +52,13 @@ class _QuickCalcAppState extends State<QuickCalcApp> {
 
 
 
-  void _toggleTheme() =>
+  void _toggleTheme() => setState(() {
 
-      setState(() => _themeMode =
+        _themeMode =
 
-          _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light);
+            _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+
+      });
 
 
 
@@ -470,9 +470,9 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
     if (!_isRewardedReady || _rewardedAd == null) {
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
 
-          content: Text('Reward ad not ready. Try again later.')));
+          const SnackBar(content: Text('Reward ad not ready. Try again later.')));
 
       return;
 
@@ -504,59 +504,89 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
 
 
-  // -------------------- CALCULATOR LOGIC --------------------
+// -------------------- CALCULATOR LOGIC --------------------
 
 
 
-  void _appendExpression(String value) => setState(() => _expression += value);
+void _appendExpression(String value) => setState(() => _expression += value);
 
 
 
-  void _clearExpression() =>
+void _clearExpression() => setState(() {
 
-      setState(() {
+  _expression = "";
 
-        _expression = "";
+  _result = "0";
 
-        _result = "0";
-
-      });
+});
 
 
 
-  void _evaluateExpression() {
+void _deleteLast() {
 
-    try {
+  setState(() {
 
-      Parser p = Parser();
+    if (_expression.isNotEmpty) {
 
-      Expression exp =
-
-          p.parse(_expression.replaceAll('×', '*').replaceAll('÷', '/'));
-
-      ContextModel cm = ContextModel();
-
-      double eval = exp.evaluate(EvaluationType.REAL, cm);
-
-      setState(() {
-
-        _result = eval.toString();
-
-        _history.insert(0, "$_expression = $_result");
-
-      });
-
-      _saveHistory();
-
-    } catch (_) {
-
-      setState(() => _result = "Error");
+      _expression = _expression.substring(0, _expression.length - 1);
 
     }
 
+    if (_expression.isEmpty) {
+
+      _result = "0";
+
+    }
+
+  });
+
+}
+
+
+
+void _evaluateExpression() {
+
+  try {
+
+    Parser p = Parser();
+
+    Expression exp = p.parse(
+
+      _expression.replaceAll('×', '*').replaceAll('÷', '/')
+
+    );
+
+    ContextModel cm = ContextModel();
+
+    double eval = exp.evaluate(EvaluationType.REAL, cm);
+
+    
+
+    // Format result: remove trailing .0 for integers
+
+    String formattedResult = eval % 1 == 0 ? eval.toInt().toString() : eval.toString();
+
+
+
+    setState(() {
+
+      _result = formattedResult;
+
+      _history.insert(0, "$_expression = $formattedResult");
+
+    });
+
+    _saveHistory();
+
+  } catch (_) {
+
+    setState(() => _result = "Error");
+
   }
 
+}
 
+      
 
   // -------------------- PANEL --------------------
 
@@ -608,23 +638,39 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
                         alignment: Alignment.bottomRight,
 
-                        child: Column(
+                        child: Container(
 
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          padding: const EdgeInsets.all(12),
 
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          decoration: BoxDecoration(
 
-                          children: [
+                            border: Border.all(color: Colors.grey),
 
-                            Text(_expression, style: const TextStyle(fontSize: 24)),
+                            borderRadius: BorderRadius.circular(12),
 
-                            Text(_result,
+                          ),
 
-                                style: const TextStyle(
+                          child: Column(
 
-                                    fontSize: 32, fontWeight: FontWeight.bold)),
+                            mainAxisAlignment: MainAxisAlignment.end,
 
-                          ],
+                            crossAxisAlignment: CrossAxisAlignment.end,
+
+                            children: [
+
+                              Text(_expression, style: const TextStyle(fontSize: 24)),
+
+                              const SizedBox(height: 8),
+
+                              Text(_result,
+
+                                  style: const TextStyle(
+
+                                      fontSize: 32, fontWeight: FontWeight.bold)),
+
+                            ],
+
+                          ),
 
                         ),
 
@@ -738,9 +784,11 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
   Widget _buildKeypad() {
 
-    Widget buildButton(String text, {VoidCallback? action}) {
+    Widget buildButton(String text, {VoidCallback? action, double? flex = 1}) {
 
       return Expanded(
+
+        flex: flex?.toInt() ?? 1,
 
         child: InkWell(
 
@@ -759,6 +807,16 @@ class _CalculatorHomeState extends State<CalculatorHome> {
                 }
 
               },
+
+          onLongPress: text == "DEL"
+
+              ? () {
+
+                  _clearExpression();
+
+                }
+
+              : null,
 
           child: Container(
 
@@ -884,6 +942,8 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
               buildButton("M-", action: () => _memory -= double.tryParse(_result) ?? 0),
 
+              buildButton("DEL", action: _deleteLast),
+
             ],
 
           ),
@@ -954,15 +1014,13 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
                 ),
 
-              if (!_isPremium)
+              if (_user != null && !_isPremium)
 
                 ListTile(
 
                   title: const Text("Unlock Scientific Tools (1hr)"),
 
-                  subtitle:
-
-                      Text(_isRewardedReady ? "Watch ad to unlock" : "Ad loading..."),
+                  subtitle: Text(_isRewardedReady ? "Watch ad to unlock" : "Ad loading..."),
 
                   enabled: _isRewardedReady,
 
@@ -1010,6 +1068,8 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
   // -------------------- GOOGLE SIGN IN --------------------
 
+
+
   Future<void> _signInWithGoogle() async {
 
     try {
@@ -1018,9 +1078,7 @@ class _CalculatorHomeState extends State<CalculatorHome> {
 
       if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
 
@@ -1047,4 +1105,3 @@ class _CalculatorHomeState extends State<CalculatorHome> {
   }
 
 }
-
