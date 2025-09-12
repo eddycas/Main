@@ -1,10 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'premium_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_manager.dart';
+import 'premium_manager.dart';
 
-class SlidePanel extends StatelessWidget {
+class SlidePanel extends StatefulWidget {
   final bool panelOpen;
   final double panelWidth;
   final double screenHeight;
@@ -12,7 +12,6 @@ class SlidePanel extends StatelessWidget {
   final List<String> history;
   final User? user;
   final PremiumManager premiumManager;
-  final AuthManager authManager;
   final Future<void> Function() showRewarded;
   final VoidCallback toggleTheme;
 
@@ -25,41 +24,91 @@ class SlidePanel extends StatelessWidget {
     required this.history,
     required this.user,
     required this.premiumManager,
-    required this.authManager,
     required this.showRewarded,
     required this.toggleTheme,
   });
 
+  @override
+  State<SlidePanel> createState() => _SlidePanelState();
+}
+
+class _SlidePanelState extends State<SlidePanel> {
+  bool _isProcessing = false;
+
   // ------------------ Helpers ------------------
-  Future<void> handleSignIn(BuildContext context) async {
+  void showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String getFriendlyError(Object e) {
+    if (e is FirebaseAuthException) {
+      return e.message ?? "Authentication error";
+    }
+    return "Something went wrong";
+  }
+
+  Future<void> handleSignIn() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
     try {
-      await authManager.signInWithGoogle();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Signed in successfully")),
-      );
+      await AuthManager.instance.signInWithGoogle();
+      showMessage("Signed in successfully");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign in failed: $e")),
-      );
+      showMessage("Sign in failed: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  Future<void> handleSignUp(BuildContext context) async {
+  Future<void> handleSignUp() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
     try {
-      final googleUser = await authManager.signInWithGoogleAndReturnCredential();
-      if (googleUser.additionalUserInfo?.isNewUser ?? false) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Account created successfully")),
-        );
+      final credential =
+          await AuthManager.instance.signInWithGoogleAndReturnCredential();
+
+      if (credential?.additionalUserInfo?.isNewUser ?? false) {
+        showMessage("Account created successfully");
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Account already exists, signed in")),
-        );
+        showMessage("Account already exists, signed in");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign up failed: $e")),
-      );
+      showMessage("Sign up failed: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> handleSignOut() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      await AuthManager.instance.signOut();
+      showMessage("Signed out successfully");
+    } catch (e) {
+      showMessage("Sign out failed: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> handleShowRewarded() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      await widget.showRewarded();
+      showMessage("Premium unlocked!");
+    } catch (e) {
+      showMessage("Failed to unlock premium: ${getFriendlyError(e)}");
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -68,12 +117,12 @@ class SlidePanel extends StatelessWidget {
     return Stack(
       children: [
         // Dimmed background when panel is open
-        if (panelOpen)
+        if (widget.panelOpen)
           GestureDetector(
-            onTap: togglePanel,
+            onTap: widget.togglePanel,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: panelOpen ? 1.0 : 0.0,
+              opacity: widget.panelOpen ? 1.0 : 0.0,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                 child: Container(color: Colors.black.withOpacity(0.2)),
@@ -84,9 +133,9 @@ class SlidePanel extends StatelessWidget {
         // Panel handle (always visible)
         Positioned(
           right: 0,
-          top: screenHeight * 0.5 - 30,
+          top: widget.screenHeight * 0.5 - 30,
           child: GestureDetector(
-            onTap: togglePanel,
+            onTap: widget.togglePanel,
             child: Container(
               width: 20,
               height: 60,
@@ -102,12 +151,13 @@ class SlidePanel extends StatelessWidget {
         // Sliding panel
         AnimatedPositioned(
           duration: const Duration(milliseconds: 200),
-          right: panelOpen ? 0 : -panelWidth,
-          top: screenHeight * 0.125,
-          height: screenHeight * 0.75,
-          width: panelWidth,
+          right: widget.panelOpen ? 0 : -widget.panelWidth,
+          top: widget.screenHeight * 0.125,
+          height: widget.screenHeight * 0.75,
+          width: widget.panelWidth,
           child: ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(24)),
             child: Container(
               color: Colors.white,
               child: Column(
@@ -115,43 +165,49 @@ class SlidePanel extends StatelessWidget {
                   // Theme toggle
                   ListTile(
                     title: const Text("Toggle Theme"),
-                    onTap: toggleTheme,
+                    onTap: widget.toggleTheme,
                   ),
+                  const Divider(),
 
                   // Auth buttons
-                  if (user == null) ...[
+                  if (widget.user == null) ...[
                     ListTile(
                       title: const Text("Sign In"),
-                      onTap: () => handleSignIn(context),
+                      enabled: !_isProcessing,
+                      onTap: handleSignIn,
                     ),
                     ListTile(
                       title: const Text("Sign Up"),
-                      onTap: () => handleSignUp(context),
+                      enabled: !_isProcessing,
+                      onTap: handleSignUp,
                     ),
                   ] else ...[
                     ListTile(
-                      title: Text("Signed in as ${user!.email}"),
+                      title: Text("Signed in as ${widget.user!.email}"),
                     ),
                     ListTile(
                       title: const Text("Sign Out"),
-                      onTap: () async {
-                        await authManager.signOut();
-                      },
+                      enabled: !_isProcessing,
+                      onTap: handleSignOut,
                     ),
-                    if (!premiumManager.isPremium)
+                    if (!widget.premiumManager.isPremium)
                       ListTile(
                         title: const Text("Unlock Premium (1hr)"),
                         subtitle: const Text("Watch ad to unlock"),
-                        onTap: showRewarded,
+                        enabled: !_isProcessing,
+                        onTap: handleShowRewarded,
                       ),
                   ],
+                  const Divider(),
 
                   // History list (only if signed in)
-                  if (user != null)
+                  if (widget.user != null)
                     Expanded(
-                      child: ListView(
-                        children:
-                            history.map((h) => ListTile(title: Text(h))).toList(),
+                      child: ListView.builder(
+                        itemCount: widget.history.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(title: Text(widget.history[index]));
+                        },
                       ),
                     ),
                 ],
