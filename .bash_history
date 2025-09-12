@@ -1,29 +1,3 @@
-git commit -m "Initial push with essential Flutter project files"
-git push -u origin main --force
-~/flutter/bin/flutter
-flutter doctor
-mkdir dose
-ls
-cd dose 
-flutter create
-flutter create temp_project
-ls
-cd temp_project
-ls
-cd android
-cd gradle
-cd wrapper
-ls
-nano gradle-wrapper.properties
-cd
-ls
-cd android
-ls
-cd gradle
-cd wrapper
-ls
-nano gradle-wrapper.properties
-nano gradle-wrapper.properties
 cd
 cd ~/android/app
 nano gradle-wrapper.properties
@@ -497,4 +471,30 @@ nano main.dart
 cd
 git add .
 git commit -m"update main.dart"
+git push origin main
+cd lib
+ls
+cat calculator_home.dart
+ls
+nano slide_panel.dart
+cat slide_panel.dart
+ls
+cat auth_manager.dart
+ls
+>calculator_home.dart
+nano calculator_home.dart
+>slide_panel.dart
+nano slide_panel.dart
+>slide_panel.dart
+nano slide_panel.dart
+cat ads_manager.dart
+ls
+>calculator_home.dart
+nano calculator_home.dart
+>ads manager.dart
+>ads_manager.dart
+nano ads_manager.dart
+cd
+git add .
+git commit -m"uodage"
 git push origin main

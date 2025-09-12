@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'premium_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_manager.dart';
 
 class SlidePanel extends StatelessWidget {
   final bool panelOpen;
@@ -11,8 +12,7 @@ class SlidePanel extends StatelessWidget {
   final List<String> history;
   final User? user;
   final PremiumManager premiumManager;
-  final Future<void> Function() signIn;
-  final Future<void> Function() signOut;
+  final AuthManager authManager;
   final Future<void> Function() showRewarded;
   final VoidCallback toggleTheme;
 
@@ -25,11 +25,43 @@ class SlidePanel extends StatelessWidget {
     required this.history,
     required this.user,
     required this.premiumManager,
-    required this.signIn,
-    required this.signOut,
+    required this.authManager,
     required this.showRewarded,
     required this.toggleTheme,
   });
+
+  // ------------------ Helpers ------------------
+  Future<void> handleSignIn(BuildContext context) async {
+    try {
+      await authManager.signInWithGoogle();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Signed in successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign in failed: $e")),
+      );
+    }
+  }
+
+  Future<void> handleSignUp(BuildContext context) async {
+    try {
+      final googleUser = await authManager.signInWithGoogleAndReturnCredential();
+      if (googleUser.additionalUserInfo?.isNewUser ?? false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Account created successfully")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Account already exists, signed in")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign up failed: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,15 +84,16 @@ class SlidePanel extends StatelessWidget {
         // Panel handle (always visible)
         Positioned(
           right: 0,
-          top: screenHeight * 0.5 - 30, // vertically centered
+          top: screenHeight * 0.5 - 30,
           child: GestureDetector(
             onTap: togglePanel,
             child: Container(
-              width: 20, // thin vertical rectangle
+              width: 20,
               height: 60,
               decoration: BoxDecoration(
                 color: Colors.grey[400],
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                borderRadius:
+                    const BorderRadius.horizontal(left: Radius.circular(12)),
               ),
             ),
           ),
@@ -89,11 +122,11 @@ class SlidePanel extends StatelessWidget {
                   if (user == null) ...[
                     ListTile(
                       title: const Text("Sign In"),
-                      onTap: signIn,
+                      onTap: () => handleSignIn(context),
                     ),
                     ListTile(
                       title: const Text("Sign Up"),
-                      onTap: signIn, // auto-register via Google
+                      onTap: () => handleSignUp(context),
                     ),
                   ] else ...[
                     ListTile(
@@ -101,7 +134,9 @@ class SlidePanel extends StatelessWidget {
                     ),
                     ListTile(
                       title: const Text("Sign Out"),
-                      onTap: signOut,
+                      onTap: () async {
+                        await authManager.signOut();
+                      },
                     ),
                     if (!premiumManager.isPremium)
                       ListTile(
@@ -115,7 +150,8 @@ class SlidePanel extends StatelessWidget {
                   if (user != null)
                     Expanded(
                       child: ListView(
-                        children: history.map((h) => ListTile(title: Text(h))).toList(),
+                        children:
+                            history.map((h) => ListTile(title: Text(h))).toList(),
                       ),
                     ),
                 ],

@@ -9,6 +9,7 @@ class AuthManager {
     _authSub = FirebaseAuth.instance.authStateChanges().listen(onChange);
   }
 
+  // Original sign in (still usable)
   Future<void> signInWithGoogle() async {
     try {
       final googleUser = await GoogleSignIn().signIn();
@@ -22,6 +23,25 @@ class AuthManager {
 
       await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (_) {}
+  }
+
+  // New method that returns UserCredential for sign-up check
+  Future<UserCredential?> signInWithGoogleAndReturnCredential() async {
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null;
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in with credential and return result
+      return await FirebaseAuth.instance.signInWithCredential(credential);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> signOut() async {
