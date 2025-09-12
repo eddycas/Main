@@ -14,6 +14,7 @@ class SlidePanel extends StatelessWidget {
   final Future<void> Function() signIn;
   final Future<void> Function() signOut;
   final Future<void> Function() showRewarded;
+  final VoidCallback toggleTheme;
 
   const SlidePanel({
     super.key,
@@ -27,6 +28,7 @@ class SlidePanel extends StatelessWidget {
     required this.signIn,
     required this.signOut,
     required this.showRewarded,
+    required this.toggleTheme,
   });
 
   @override
@@ -59,20 +61,32 @@ class SlidePanel extends StatelessWidget {
                 children: [
                   ListTile(
                     title: const Text("Toggle Theme"),
-                    onTap: () {},
+                    onTap: toggleTheme,
                   ),
-                  if (user == null)
-                    ListTile(title: const Text("Sign In"), onTap: signIn)
-                  else
+                  if (user == null) ...[
                     ListTile(
-                        title: Text("Signed in as ${user!.email}"),
-                        subtitle: const Text("Tap to sign out"),
-                        onTap: signOut),
-                  if (user != null && !premiumManager.isPremium)
+                      title: const Text("Sign In"),
+                      onTap: signIn,
+                    ),
                     ListTile(
-                        title: const Text("Unlock Scientific Tools (1hr)"),
+                      title: const Text("Sign Up"),
+                      onTap: signIn, // same Google Sign-In for auto-register
+                    ),
+                  ] else ...[
+                    ListTile(
+                      title: Text("Signed in as ${user!.email}"),
+                    ),
+                    ListTile(
+                      title: const Text("Sign Out"),
+                      onTap: signOut,
+                    ),
+                    if (!premiumManager.isPremium)
+                      ListTile(
+                        title: const Text("Unlock Premium (1hr)"),
                         subtitle: const Text("Watch ad to unlock"),
-                        onTap: showRewarded),
+                        onTap: showRewarded,
+                      ),
+                  ],
                   Expanded(
                     child: ListView(
                       children: history.map((h) => ListTile(title: Text(h))).toList(),

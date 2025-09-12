@@ -85,15 +85,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
     panelWidth = screenWidth * 0.7;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("QuickCalc"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: togglePanel,
-          )
-        ],
-      ),
+      appBar: AppBar(title: const Text("QuickCalc")),
       body: Stack(
         children: [
           Column(
@@ -104,24 +96,19 @@ class CalculatorHomeState extends State<CalculatorHome> {
                   height: adsManager.topBanner!.size.height.toDouble(),
                   child: AdWidget(ad: adsManager.topBanner!),
                 ),
-              // ---------------- Result Box ----------------
-              Expanded(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      result,
-                      style: const TextStyle(fontSize: 48),
-                    ),
-                  ),
+              // Result Box
+              Container(
+                width: screenWidth * 0.9,
+                height: screenHeight * 0.4,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  result,
+                  style: const TextStyle(fontSize: 48),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // ---------------- Keypad ----------------
               CalculatorKeypad(
                 onPressed: (btn) {
                   setState(() {
@@ -137,7 +124,6 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 ),
             ],
           ),
-          // ---------------- Slide Panel ----------------
           SlidePanel(
             panelOpen: panelOpen,
             panelWidth: panelWidth,
@@ -157,6 +143,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 });
               }
             },
+            toggleTheme: widget.toggleTheme,
           ),
         ],
       ),
