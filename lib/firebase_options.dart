@@ -14,4 +14,4 @@ class DefaultFirebaseOptions {
       measurementId: '',    // optional, leave empty if unused
     );
   }
-}3
+}
