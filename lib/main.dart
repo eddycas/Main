@@ -590,181 +590,175 @@ void _evaluateExpression() {
 
   // -------------------- PANEL --------------------
 
-
-
-  void _togglePanel() => setState(() => _panelOpen = !_panelOpen);
-
-
-
-  @override
-
-  Widget build(BuildContext context) {
-
-    _screenWidth = MediaQuery.of(context).size.width;
-
-    _screenHeight = MediaQuery.of(context).size.height;
-
-    _panelWidth = _screenWidth * 0.75;
+void _togglePanel() => setState(() => _panelOpen = !_panelOpen);
 
 
 
-    return Scaffold(
+Widget _buildSlidePanel() {
 
-      body: Stack(
+  return Stack(
 
-        children: [
+    children: [
 
-          Column(
+      // Background blur when panel is open
 
-            children: [
+      if (_panelOpen)
 
-              if (_isTopBannerLoaded)
+        GestureDetector(
 
-                SizedBox(height: 50, child: AdWidget(ad: _topBanner!)),
+          onTap: _togglePanel,
 
-              Expanded(
+          child: AnimatedOpacity(
 
-                child: Column(
+            duration: const Duration(milliseconds: 200),
 
-                  children: [
+            opacity: _panelOpen ? 1.0 : 0.0,
 
-                    Expanded(
+            child: BackdropFilter(
 
-                      flex: 2,
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
 
-                      child: Container(
+              child: Container(color: Colors.black.withOpacity(0.2)),
 
-                        padding: const EdgeInsets.all(16),
+            ),
 
-                        alignment: Alignment.bottomRight,
+          ),
 
-                        child: Container(
+        ),
 
-                          padding: const EdgeInsets.all(12),
 
-                          decoration: BoxDecoration(
 
-                            border: Border.all(color: Colors.grey),
+      // Sliding panel
 
-                            borderRadius: BorderRadius.circular(12),
+      AnimatedPositioned(
 
-                          ),
+        duration: const Duration(milliseconds: 200),
 
-                          child: Column(
+        right: _panelOpen ? 0 : -_panelWidth,
 
-                            mainAxisAlignment: MainAxisAlignment.end,
+        top: _screenHeight * 0.125,
 
-                            crossAxisAlignment: CrossAxisAlignment.end,
+        height: _screenHeight * 0.75,
 
-                            children: [
+        width: _panelWidth,
 
-                              Text(_expression, style: const TextStyle(fontSize: 24)),
+        child: GestureDetector(
 
-                              const SizedBox(height: 8),
+          onHorizontalDragUpdate: (details) {
 
-                              Text(_result,
+            // Update panel position based on drag delta
 
-                                  style: const TextStyle(
+            double newOffset = (_panelOpen ? 0 : -_panelWidth) + details.delta.dx;
 
-                                      fontSize: 32, fontWeight: FontWeight.bold)),
+            newOffset = newOffset.clamp(-_panelWidth, 0);
 
-                            ],
+            setState(() {
 
-                          ),
+              _panelOpen = newOffset >= -_panelWidth / 2;
 
-                        ),
+            });
 
-                      ),
+          },
+
+          onHorizontalDragEnd: (details) {
+
+            // Snap panel open or closed based on current position
+
+            setState(() {
+
+              _panelOpen = _panelOpen;
+
+            });
+
+          },
+
+          child: ClipRRect(
+
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+
+            child: Container(
+
+              color: Colors.white,
+
+              child: Column(
+
+                children: [
+
+                  ListTile(
+
+                    title: const Text("Toggle Theme"),
+
+                    onTap: widget.toggleTheme,
+
+                  ),
+
+                  if (_user == null)
+
+                    ListTile(
+
+                      title: const Text("Sign In"),
+
+                      onTap: _signInWithGoogle,
+
+                    )
+
+                  else
+
+                    ListTile(
+
+                      title: Text("Signed in as ${_user!.email}"),
+
+                      subtitle: const Text("Tap to sign out"),
+
+                      onTap: _signOut,
 
                     ),
 
-                    Expanded(flex: 3, child: _buildKeypad()),
+                  if (_user != null && !_isPremium)
 
-                  ],
+                    ListTile(
 
-                ),
+                      title: const Text("Unlock Scientific Tools (1hr)"),
 
-              ),
+                      subtitle: Text(_isRewardedReady
 
-              if (_isBottomBannerLoaded)
+                          ? "Watch ad to unlock"
 
-                SizedBox(height: 50, child: AdWidget(ad: _bottomBanner!)),
+                          : "Ad loading..."),
 
-            ],
+                      enabled: _isRewardedReady,
 
-          ),
+                      onTap: _showRewardedUnlock,
 
-          _buildSlidePanel(),
+                    ),
 
-          if (!_isPremium && _panelOpen)
+                  if (_isPremium)
 
-            Positioned.fill(
+                    ListTile(
 
-              child: BackdropFilter(
+                      title: const Text("Scientific Tools Unlocked"),
 
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                      subtitle: Text(
 
-                child: Container(color: Colors.black.withOpacity(0.2)),
+                          "Time remaining: ${_premiumRemaining.inMinutes}:${(_premiumRemaining.inSeconds % 60).toString().padLeft(2, '0')}"),
 
-              ),
+                    ),
 
-            ),
+                  const Divider(),
 
-          Positioned(
+                  Expanded(
 
-            right: _panelOpen ? _panelWidth - 20 : 0,
+                    child: ListView(
 
-            top: _screenHeight / 2 - 40,
+                      children:
 
-            child: GestureDetector(
+                          _history.map((h) => ListTile(title: Text(h))).toList(),
 
-              onTap: _togglePanel,
+                    ),
 
-              onHorizontalDragStart: (d) {
+                  ),
 
-                _isDraggingHandle = true;
-
-                _dragStartX = d.globalPosition.dx;
-
-                _panelStartOffset = _panelOpen ? _panelWidth : 0;
-
-              },
-
-              onHorizontalDragUpdate: (d) {
-
-                if (_isDraggingHandle) {
-
-                  double delta = d.globalPosition.dx - _dragStartX;
-
-                  if (delta < -50 && _panelOpen) {
-
-                    setState(() => _panelOpen = false);
-
-                  } else if (delta > 50 && !_panelOpen) {
-
-                    setState(() => _panelOpen = true);
-
-                  }
-
-                }
-
-              },
-
-              onHorizontalDragEnd: (_) => _isDraggingHandle = false,
-
-              child: Container(
-
-                width: 20,
-
-                height: 80,
-
-                decoration: BoxDecoration(
-
-                  color: Colors.blueGrey,
-
-                  borderRadius: BorderRadius.circular(10),
-
-                ),
+                ],
 
               ),
 
@@ -772,287 +766,57 @@ void _evaluateExpression() {
 
           ),
 
-        ],
+        ),
 
       ),
 
-    );
-
-  }
 
 
+      // Drag handle
 
-  Widget _buildKeypad() {
+      Positioned(
 
-    Widget buildButton(String text, {VoidCallback? action, double? flex = 1}) {
+        right: _panelOpen ? _panelWidth - 20 : 0,
 
-      return Expanded(
+        top: _screenHeight / 2 - 40,
 
-        flex: flex?.toInt() ?? 1,
+        child: GestureDetector(
 
-        child: InkWell(
+          onTap: _togglePanel,
 
-          onTap: action ??
+          onHorizontalDragUpdate: (d) {
 
-              () {
+            double delta = d.delta.dx;
 
-                if (text == "=") {
+            setState(() {
 
-                  _evaluateExpression();
+              if (_panelOpen) {
 
-                } else {
+                if (delta < -20) _panelOpen = false;
 
-                  _appendExpression(text);
+              } else {
 
-                }
+                if (delta > 20) _panelOpen = true;
 
-              },
+              }
 
-          onLongPress: text == "DEL"
+            });
 
-              ? () {
-
-                  _clearExpression();
-
-                }
-
-              : null,
+          },
 
           child: Container(
 
-            margin: const EdgeInsets.all(4),
+            width: 20,
+
+            height: 80,
 
             decoration: BoxDecoration(
 
-              color: Colors.grey.shade300,
+              color: Colors.blueGrey,
 
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
 
             ),
-
-            alignment: Alignment.center,
-
-            child: Text(text, style: const TextStyle(fontSize: 24)),
-
-          ),
-
-        ),
-
-      );
-
-    }
-
-
-
-    return Column(
-
-      children: [
-
-        Expanded(
-
-          child: Row(
-
-            children: [
-
-              buildButton("7"),
-
-              buildButton("8"),
-
-              buildButton("9"),
-
-              buildButton("÷"),
-
-            ],
-
-          ),
-
-        ),
-
-        Expanded(
-
-          child: Row(
-
-            children: [
-
-              buildButton("4"),
-
-              buildButton("5"),
-
-              buildButton("6"),
-
-              buildButton("×"),
-
-            ],
-
-          ),
-
-        ),
-
-        Expanded(
-
-          child: Row(
-
-            children: [
-
-              buildButton("1"),
-
-              buildButton("2"),
-
-              buildButton("3"),
-
-              buildButton("-"),
-
-            ],
-
-          ),
-
-        ),
-
-        Expanded(
-
-          child: Row(
-
-            children: [
-
-              buildButton("0"),
-
-              buildButton("."),
-
-              buildButton("="),
-
-              buildButton("+"),
-
-            ],
-
-          ),
-
-        ),
-
-        Expanded(
-
-          child: Row(
-
-            children: [
-
-              buildButton("MC", action: () => _memory = 0),
-
-              buildButton("MR", action: () => _appendExpression(_memory.toString())),
-
-              buildButton("M+", action: () => _memory += double.tryParse(_result) ?? 0),
-
-              buildButton("M-", action: () => _memory -= double.tryParse(_result) ?? 0),
-
-              buildButton("DEL", action: _deleteLast),
-
-            ],
-
-          ),
-
-        ),
-
-      ],
-
-    );
-
-  }
-
-
-
-  Widget _buildSlidePanel() {
-
-    return AnimatedPositioned(
-
-      duration: const Duration(milliseconds: 300),
-
-      right: _panelOpen ? 0 : -_panelWidth,
-
-      top: _screenHeight * 0.125,
-
-      height: _screenHeight * 0.75,
-
-      width: _panelWidth,
-
-      child: ClipRRect(
-
-        borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
-
-        child: Container(
-
-          color: Colors.white,
-
-          child: Column(
-
-            children: [
-
-              ListTile(
-
-                title: const Text("Toggle Theme"),
-
-                onTap: widget.toggleTheme,
-
-              ),
-
-              if (_user == null)
-
-                ListTile(
-
-                  title: const Text("Sign In"),
-
-                  onTap: _signInWithGoogle,
-
-                )
-
-              else
-
-                ListTile(
-
-                  title: Text("Signed in as ${_user!.email}"),
-
-                  subtitle: const Text("Tap to sign out"),
-
-                  onTap: _signOut,
-
-                ),
-
-              if (_user != null && !_isPremium)
-
-                ListTile(
-
-                  title: const Text("Unlock Scientific Tools (1hr)"),
-
-                  subtitle: Text(_isRewardedReady ? "Watch ad to unlock" : "Ad loading..."),
-
-                  enabled: _isRewardedReady,
-
-                  onTap: _showRewardedUnlock,
-
-                ),
-
-              if (_isPremium)
-
-                ListTile(
-
-                  title: const Text("Scientific Tools Unlocked"),
-
-                  subtitle: Text(
-
-                      "Time remaining: ${_premiumRemaining.inMinutes}:${(_premiumRemaining.inSeconds % 60).toString().padLeft(2, '0')}"),
-
-                ),
-
-              const Divider(),
-
-              Expanded(
-
-                child: ListView(
-
-                  children: _history.map((h) => ListTile(title: Text(h))).toList(),
-
-                ),
-
-              ),
-
-            ],
 
           ),
 
@@ -1060,9 +824,11 @@ void _evaluateExpression() {
 
       ),
 
-    );
+    ],
 
-  }
+  );
+
+}
 
 
 
