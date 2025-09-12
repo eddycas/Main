@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     return const FirebaseOptions(
-      apiKey: '', // No Web API Key for this project
-      appId: '1:839664223458:android:17c7b54599f0b190430abb',
+      apiKey: 'AIzaSyDW9wQz_4DEk-HympMC-uCrrcai4y3vZcY', // Your actual API key
+      appId: '1:839664223458:android:17c7b54599f0b190430abb', // Android App ID
       messagingSenderId: '839664223458',
       projectId: 'quickcalc-f0290',
-      storageBucket: '', // Optional, leave empty if not used
-      authDomain: '', // Optional
-      measurementId: '', // Optional
+      storageBucket: 'quickcalc-f0290.firebasestorage.app',
+      authDomain: '',       // optional, leave empty if unused
+      measurementId: '',    // optional, leave empty if unused
     );
   }
-}
+}3
