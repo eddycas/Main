@@ -1,12 +1,3 @@
-git remote remove origin  # remove old remote
-git remote add origin https://github.com/eddycas/Main.git  # add new remote
-ls
-git add lib
-git add android
-git add ios      # optional if you want iOS build too
-git add web      # optional if you have web build
-git add pubspec.yaml
-git add README.md
 git commit -m "Initial push with essential Flutter project files"
 git push -u origin main --force
 ~/flutter/bin/flutter
@@ -493,6 +484,15 @@ nano main.dart
 cat main.dart
 cat main.dart
 > main.dart
+nano main.dart
+cd
+git add .
+git commit -m"update main.dart"
+git push origin main
+cd lib
+>main.dart
+nano main.dart
+>main.dart
 nano main.dart
 cd
 git add .
