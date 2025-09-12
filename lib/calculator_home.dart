@@ -38,14 +38,12 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
   User? user;
 
-  int calculationCount = 0; // Track number of calculations
+  int calculationCount = 0;
 
   // -------------------- MANAGERS --------------------
   late PremiumManager premiumManager;
   late AdsManager adsManager;
-  late AuthManager authManager;
 
-  // Callback for interstitial
   VoidCallback? onShowInterstitial;
 
   @override
@@ -54,11 +52,11 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
     premiumManager = PremiumManager();
     adsManager = AdsManager();
-    authManager = AuthManager();
 
+    // Use the singleton instance
     user = FirebaseAuth.instance.currentUser;
 
-    authManager.initAuthListener((u) {
+    AuthManager.instance.initAuthListener((u) {
       setState(() {
         user = u;
       });
@@ -68,25 +66,23 @@ class CalculatorHomeState extends State<CalculatorHome> {
     // Load banners
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
-    
+
     // Load rewarded
     adsManager.loadRewardedAd(onLoaded: (ad) {
       rewardedAd = ad;
       isRewardedReady = true;
     });
 
-    // Load interstitial and link callback
+    // Load interstitial
     adsManager.loadInterstitial();
-    onShowInterstitial = () {
-      adsManager.showInterstitial();
-    };
+    onShowInterstitial = () => adsManager.showInterstitial();
   }
 
   @override
   void dispose() {
     adsManager.disposeAll();
     premiumManager.dispose();
-    authManager.dispose();
+    AuthManager.instance.dispose();
     super.dispose();
   }
 
@@ -96,15 +92,24 @@ class CalculatorHomeState extends State<CalculatorHome> {
   void handleCalculation(String btn) {
     setState(() {
       CalculatorLogic.handleButton(btn, this);
-
-      // Increment calculation count
       calculationCount++;
 
-      // Trigger interstitial every 10 calculations
+      // Show interstitial every 10 calculations
       if (calculationCount % 10 == 0) {
         onShowInterstitial?.call();
       }
     });
+  }
+
+  // -------------------- REWARDED HANDLER --------------------
+  Future<void> handleShowRewarded() async {
+    if (rewardedAd != null) {
+      await adsManager.showRewardedAd(rewardedAd!, premiumManager);
+      setState(() {
+        rewardedAd = null;
+        isRewardedReady = false;
+      });
+    }
   }
 
   @override
@@ -157,17 +162,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
             history: history,
             user: user,
             premiumManager: premiumManager,
-            signIn: authManager.signInWithGoogle,
-            signOut: authManager.signOut,
-            showRewarded: () async {
-              if (rewardedAd != null) {
-                await adsManager.showRewardedAd(rewardedAd!, premiumManager);
-                setState(() {
-                  rewardedAd = null;
-                  isRewardedReady = false;
-                });
-              }
-            },
+            showRewarded: handleShowRewarded,
             toggleTheme: widget.toggleTheme,
           ),
         ],
