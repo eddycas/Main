@@ -1,20 +1,17 @@
-// lib/slide_panel.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'premium_manager.dart';
 
 class SlidePanel extends StatefulWidget {
   final bool panelOpen;
-  final double panelWidth;
-  final double screenHeight;
-  final VoidCallback togglePanel;
+  final double panelWidth, screenHeight;
+  final VoidCallback togglePanel, toggleTheme;
   final List<String> history;
   final User? user;
   final PremiumManager premiumManager;
   final Future<void> Function() showRewarded;
-  final VoidCallback toggleTheme;
 
   const SlidePanel({
     super.key,
@@ -33,38 +30,36 @@ class SlidePanel extends StatefulWidget {
   State<SlidePanel> createState() => _SlidePanelState();
 }
 
-class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateMixin {
+class _SlidePanelState extends State<SlidePanel> {
   bool _isProcessing = false;
   double _dragOffset = 0.0;
 
-  // ------------------ Helpers ------------------
   void showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String getFriendlyError(Object e) {
-    if (e is FirebaseAuthException) return e.message ?? "Authentication error";
-    return "Something went wrong";
-  }
-
-  // ------------------ Auth ------------------
   Future<void> handleGoogleSignIn() async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
-      final credential = await AuthService.instance.signInWithGoogleAndReturnCredential();
-      if (credential != null) {
-        final isNew = credential.additionalUserInfo?.isNewUser ?? false;
-        showMessage(isNew ? "Account created!" : "Signed in successfully");
-      } else {
-        showMessage("Sign in failed: No credential returned");
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        showMessage("Sign in canceled");
+        return;
       }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      showMessage(userCredential.additionalUserInfo?.isNewUser ?? false
+          ? "Account created!"
+          : "Signed in successfully");
     } catch (e) {
-      showMessage("Sign in failed: ${getFriendlyError(e)}");
+      showMessage("Sign in failed");
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
@@ -73,65 +68,42 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
   Future<void> handleSignOut() async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
-
     try {
-      await AuthService.instance.signOut();
+      await FirebaseAuth.instance.signOut();
+      await GoogleSignIn().signOut();
       showMessage("Signed out successfully");
-    } catch (e) {
-      showMessage("Sign out failed: ${getFriendlyError(e)}");
+    } catch (_) {
+      showMessage("Sign out failed");
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  Future<void> handleShowRewarded() async {
-    if (_isProcessing) return;
-    setState(() => _isProcessing = true);
-
-    try {
-      await widget.showRewarded();
-      showMessage("Premium unlocked!");
-    } catch (e) {
-      showMessage("Failed to unlock premium: ${getFriendlyError(e)}");
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
-    }
-  }
-
-  // ------------------ Drag ------------------
   void _onVerticalDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragOffset += details.primaryDelta ?? 0;
-    });
+    _dragOffset += details.primaryDelta ?? 0;
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
-    if (_dragOffset < -50 || _dragOffset > 50) {
-      widget.togglePanel();
-    }
+    if (_dragOffset.abs() > 50) widget.togglePanel();
     _dragOffset = 0.0;
   }
 
-  // ------------------ UI ------------------
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Dimmed background
         if (widget.panelOpen)
           GestureDetector(
             onTap: widget.togglePanel,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: widget.panelOpen ? 1.0 : 0.0,
+              opacity: 1.0,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                 child: Container(color: Colors.black.withOpacity(0.2)),
               ),
             ),
           ),
-
-        // Panel handle
         Positioned(
           right: 0,
           top: widget.screenHeight * 0.5 - 30,
@@ -147,8 +119,6 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
             ),
           ),
         ),
-
-        // Sliding panel
         AnimatedPositioned(
           duration: const Duration(milliseconds: 200),
           right: widget.panelOpen ? 0 : -widget.panelWidth,
@@ -160,64 +130,39 @@ class _SlidePanelState extends State<SlidePanel> with SingleTickerProviderStateM
             onVerticalDragEnd: _onVerticalDragEnd,
             child: ClipRRect(
               borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
-              child: Stack(
-                children: [
-                  Container(
-                    color: Colors.white,
-                    child: Column(
-                      children: [
-                        // Theme toggle
+              child: Container(
+                color: Colors.white,
+                child: Column(
+                  children: [
+                    ListTile(title: const Text("Toggle Theme"), onTap: widget.toggleTheme),
+                    const Divider(),
+                    if (widget.user == null)
+                      ListTile(title: const Text("Sign in with Google"), onTap: handleGoogleSignIn)
+                    else ...[
+                      ListTile(title: Text("Signed in as ${widget.user!.email}")),
+                      ListTile(title: const Text("Sign Out"), onTap: handleSignOut),
+                      if (!widget.premiumManager.isPremium)
                         ListTile(
-                          title: const Text("Toggle Theme"),
-                          onTap: widget.toggleTheme,
+                          title: const Text("Unlock Premium (1hr)"),
+                          subtitle: const Text("Watch ad to unlock"),
+                          onTap: widget.showRewarded,
                         ),
-                        const Divider(),
-
-                        // Auth buttons
-                        if (widget.user == null) ...[
-                          ListTile(
-                            title: const Text("Sign in with Google"),
-                            enabled: !_isProcessing,
-                            onTap: handleGoogleSignIn,
-                          ),
-                        ] else ...[
-                          ListTile(title: Text("Signed in as ${widget.user!.email}")),
-                          ListTile(
-                            title: const Text("Sign Out"),
-                            enabled: !_isProcessing,
-                            onTap: handleSignOut,
-                          ),
-                          if (!widget.premiumManager.isPremium)
-                            ListTile(
-                              title: const Text("Unlock Premium (1hr)"),
-                              subtitle: const Text("Watch ad to unlock"),
-                              enabled: !_isProcessing,
-                              onTap: handleShowRewarded,
-                            ),
-                        ],
-                        const Divider(),
-
-                        // History list
-                        if (widget.user != null)
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: widget.history.length,
-                              itemBuilder: (context, index) {
-                                return ListTile(title: Text(widget.history[index]));
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Loading indicator
-                  if (_isProcessing)
-                    Container(
-                      color: Colors.black.withOpacity(0.25),
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                ],
+                    ],
+                    const Divider(),
+                    if (widget.user != null)
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: widget.history.length,
+                          itemBuilder: (context, index) => ListTile(title: Text(widget.history[index])),
+                        ),
+                      ),
+                    if (_isProcessing)
+                      Container(
+                        color: Colors.black.withOpacity(0.25),
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
