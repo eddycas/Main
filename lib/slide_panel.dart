@@ -35,6 +35,7 @@ class SlidePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        // Dimmed background when panel is open
         if (panelOpen)
           GestureDetector(
             onTap: togglePanel,
@@ -47,6 +48,25 @@ class SlidePanel extends StatelessWidget {
               ),
             ),
           ),
+
+        // Panel handle (always visible)
+        Positioned(
+          right: 0,
+          top: screenHeight * 0.5 - 30, // vertically centered
+          child: GestureDetector(
+            onTap: togglePanel,
+            child: Container(
+              width: 20, // thin vertical rectangle
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+              ),
+            ),
+          ),
+        ),
+
+        // Sliding panel
         AnimatedPositioned(
           duration: const Duration(milliseconds: 200),
           right: panelOpen ? 0 : -panelWidth,
@@ -59,10 +79,13 @@ class SlidePanel extends StatelessWidget {
               color: Colors.white,
               child: Column(
                 children: [
+                  // Theme toggle
                   ListTile(
                     title: const Text("Toggle Theme"),
                     onTap: toggleTheme,
                   ),
+
+                  // Auth buttons
                   if (user == null) ...[
                     ListTile(
                       title: const Text("Sign In"),
@@ -70,7 +93,7 @@ class SlidePanel extends StatelessWidget {
                     ),
                     ListTile(
                       title: const Text("Sign Up"),
-                      onTap: signIn, // same Google Sign-In for auto-register
+                      onTap: signIn, // auto-register via Google
                     ),
                   ] else ...[
                     ListTile(
@@ -87,11 +110,14 @@ class SlidePanel extends StatelessWidget {
                         onTap: showRewarded,
                       ),
                   ],
-                  Expanded(
-                    child: ListView(
-                      children: history.map((h) => ListTile(title: Text(h))).toList(),
+
+                  // History list (only if signed in)
+                  if (user != null)
+                    Expanded(
+                      child: ListView(
+                        children: history.map((h) => ListTile(title: Text(h))).toList(),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

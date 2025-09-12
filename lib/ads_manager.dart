@@ -6,7 +6,9 @@ class AdsManager {
   BannerAd? topBanner;
   BannerAd? bottomBanner;
   RewardedAd? rewardedAd;
+  InterstitialAd? interstitialAd;
 
+  // ---------------- BANNERS ----------------
   void loadTopBanner({required VoidCallback onLoaded}) {
     topBanner = BannerAd(
       adUnitId: "ca-app-pub-3940256099942544/6300978111",
@@ -31,6 +33,7 @@ class AdsManager {
     )..load();
   }
 
+  // ---------------- REWARDED ----------------
   void loadRewardedAd({required Function(RewardedAd) onLoaded}) {
     RewardedAd.load(
       adUnitId: "ca-app-pub-3940256099942544/5224354917",
@@ -53,9 +56,46 @@ class AdsManager {
     });
   }
 
+  // ---------------- INTERSTITIAL ----------------
+  void loadInterstitial() {
+    InterstitialAd.load(
+      adUnitId: "ca-app-pub-3940256099942544/1033173712", // Test ad unit
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          interstitialAd = ad;
+          // Setup callback to reload after closed
+          interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              loadInterstitial(); // Reload for next use
+            },
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              ad.dispose();
+              loadInterstitial(); // Reload on failure
+            },
+          );
+        },
+        onAdFailedToLoad: (error) {
+          // Retry after 15 seconds if failed
+          Future.delayed(const Duration(seconds: 15), loadInterstitial);
+        },
+      ),
+    );
+  }
+
+  void showInterstitial() {
+    if (interstitialAd != null) {
+      interstitialAd!.show();
+      interstitialAd = null; // Ensure we reload next
+    }
+  }
+
+  // ---------------- DISPOSE ----------------
   void disposeAll() {
     topBanner?.dispose();
     bottomBanner?.dispose();
     rewardedAd?.dispose();
+    interstitialAd?.dispose();
   }
 }

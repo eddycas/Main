@@ -38,10 +38,15 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
   User? user;
 
+  int calculationCount = 0; // Track number of calculations
+
   // -------------------- MANAGERS --------------------
   late PremiumManager premiumManager;
   late AdsManager adsManager;
   late AuthManager authManager;
+
+  // Callback for interstitial
+  VoidCallback? onShowInterstitial;
 
   @override
   void initState() {
@@ -60,12 +65,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
       premiumManager.loadPremium(u);
     });
 
+    // Load banners
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
+    
+    // Load rewarded
     adsManager.loadRewardedAd(onLoaded: (ad) {
       rewardedAd = ad;
       isRewardedReady = true;
     });
+
+    // Load interstitial and link callback
+    adsManager.loadInterstitial();
+    onShowInterstitial = () {
+      adsManager.showInterstitial();
+    };
   }
 
   @override
@@ -77,6 +91,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
   }
 
   void togglePanel() => setState(() => panelOpen = !panelOpen);
+
+  // -------------------- CALCULATION HANDLER --------------------
+  void handleCalculation(String btn) {
+    setState(() {
+      CalculatorLogic.handleButton(btn, this);
+
+      // Increment calculation count
+      calculationCount++;
+
+      // Trigger interstitial every 10 calculations
+      if (calculationCount % 10 == 0) {
+        onShowInterstitial?.call();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,11 +139,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 ),
               ),
               CalculatorKeypad(
-                onPressed: (btn) {
-                  setState(() {
-                    CalculatorLogic.handleButton(btn, this);
-                  });
-                },
+                onPressed: handleCalculation,
               ),
               if (isBottomBannerLoaded && adsManager.bottomBanner != null)
                 SizedBox(
