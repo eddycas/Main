@@ -85,7 +85,15 @@ class CalculatorHomeState extends State<CalculatorHome> {
     panelWidth = screenWidth * 0.7;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("QuickCalc")),
+      appBar: AppBar(
+        title: const Text("QuickCalc"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: togglePanel,
+          )
+        ],
+      ),
       body: Stack(
         children: [
           Column(
@@ -96,14 +104,24 @@ class CalculatorHomeState extends State<CalculatorHome> {
                   height: adsManager.topBanner!.size.height.toDouble(),
                   child: AdWidget(ad: adsManager.topBanner!),
                 ),
+              // ---------------- Result Box ----------------
               Expanded(
                 child: Center(
-                  child: Text(
-                    result,
-                    style: const TextStyle(fontSize: 48),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      result,
+                      style: const TextStyle(fontSize: 48),
+                    ),
                   ),
                 ),
               ),
+              // ---------------- Keypad ----------------
               CalculatorKeypad(
                 onPressed: (btn) {
                   setState(() {
@@ -119,6 +137,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 ),
             ],
           ),
+          // ---------------- Slide Panel ----------------
           SlidePanel(
             panelOpen: panelOpen,
             panelWidth: panelWidth,

@@ -5,6 +5,8 @@ class CalculatorLogic {
   static void handleButton(String btn, CalculatorHomeState state) {
     if (btn == '=') {
       try {
+        if (state.expression.isEmpty) return;
+
         Parser p = Parser();
         Expression exp = p.parse(
             state.expression.replaceAll('×', '*').replaceAll('÷', '/'));
@@ -13,6 +15,7 @@ class CalculatorLogic {
 
         state.result = eval % 1 == 0 ? eval.toInt().toString() : eval.toString();
         state.history.insert(0, "${state.expression} = ${state.result}");
+        state.expression = ""; // clear expression after calculation
       } catch (_) {
         state.result = "Error";
       }
@@ -21,7 +24,8 @@ class CalculatorLogic {
       state.result = "0";
     } else if (btn == 'DEL') {
       if (state.expression.isNotEmpty) {
-        state.expression = state.expression.substring(0, state.expression.length - 1);
+        state.expression =
+            state.expression.substring(0, state.expression.length - 1);
       }
       if (state.expression.isEmpty) state.result = "0";
     } else if (btn == 'M+') {
@@ -30,6 +34,7 @@ class CalculatorLogic {
       state.expression += state.memory.toString();
     } else {
       state.expression += btn;
+      state.result = state.expression; // show current input
     }
   }
 }
