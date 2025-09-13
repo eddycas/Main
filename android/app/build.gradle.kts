@@ -1,9 +1,9 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services") // ✅ Added for Firebase
+    id("com.google.gms.google-services") // ✅ Firebase plugin
 }
 
 android {
@@ -21,16 +21,31 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.eddycas.quickcalc"  // ✅ Must match google-services.json
+        applicationId = "com.eddycas.quickcalc"  // ✅ must match Firebase
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            if (System.getenv("CM_KEYSTORE_PATH")) {
+                storeFile file(System.getenv("CM_KEYSTORE_PATH"))
+                storePassword System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("CM_KEY_ALIAS")
+                keyPassword System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig signingConfigs.release
+            // Optional: enable shrinking & obfuscation for smaller APK
+            // minifyEnabled true
+            // shrinkResources true
+            // proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 }
