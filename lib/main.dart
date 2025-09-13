@@ -1,5 +1,3 @@
-​// main.dart (QuickCalc Best-of-Both-Worlds Version)
-
 import 'dart:async';
 
 import 'dart:math';
