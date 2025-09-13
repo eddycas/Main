@@ -1,4 +1,4 @@
-import 'dart:async';
+    import 'dart:async';
 
 import 'dart:math';
 
@@ -412,7 +412,15 @@ class CalculatorLogic {
 
         state.result = eval % 1 == 0 ? eval.toInt().toString() : eval.toString();
 
+
+
+        // Save history
+
         state.history.insert(0, "${state.expression} = ${state.result}");
+
+        if (state.history.length > 10) state.history.removeLast(); // Keep 10 latest
+
+
 
         state.expression = "";
 
@@ -594,7 +602,9 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
-  bool panelOpen = false;
+  bool leftPanelOpen = false;
+
+  bool rightPanelOpen = false;
 
   bool isTopBannerLoaded = false;
 
@@ -640,6 +650,10 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
+    _loadHistory();
+
+
+
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
 
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
@@ -668,13 +682,17 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
     final interstitialMillis = prefs.getInt('last_interstitial_time');
 
-    if (interstitialMillis != null) lastInterstitialTime = DateTime.fromMillisecondsSinceEpoch(interstitialMillis);
+    if (interstitialMillis != null)
+
+      lastInterstitialTime = DateTime.fromMillisecondsSinceEpoch(interstitialMillis);
 
 
 
     final rewardedMillis = prefs.getInt('last_rewarded_time');
 
-    if (rewardedMillis != null) lastRewardedTime = DateTime.fromMillisecondsSinceEpoch(rewardedMillis);
+    if (rewardedMillis != null)
+
+      lastRewardedTime = DateTime.fromMillisecondsSinceEpoch(rewardedMillis);
 
   }
 
@@ -704,6 +722,30 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
+  Future<void> _loadHistory() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedHistory = prefs.getStringList('calc_history') ?? [];
+
+    history.clear();
+
+    history.addAll(savedHistory.take(10)); // Load latest 10 calculations
+
+  }
+
+
+
+  Future<void> _saveHistory() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList('calc_history', history.take(10).toList());
+
+  }
+
+
+
   bool _canShowInterstitial() =>
 
       lastInterstitialTime == null || DateTime.now().difference(lastInterstitialTime!) >= const Duration(minutes: 20);
@@ -725,6 +767,10 @@ class CalculatorHomeState extends State<CalculatorHome> {
     if (lastCalculationSuccessful) {
 
       calculationCount++;
+
+      await _saveHistory(); // Persist history
+
+
 
       bool showInterstitial = calculationCount % 20 == 0 && _canShowInterstitial();
 
@@ -794,7 +840,17 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
           IconButton(icon: const Icon(Icons.color_lens), onPressed: widget.toggleTheme),
 
-          IconButton(icon: const Icon(Icons.history), onPressed: () => setState(() => panelOpen = !panelOpen)),
+          IconButton(
+
+              icon: const Icon(Icons.history),
+
+              onPressed: () => setState(() => leftPanelOpen = !leftPanelOpen)),
+
+          IconButton(
+
+              icon: const Icon(Icons.star),
+
+              onPressed: () => setState(() => rightPanelOpen = !rightPanelOpen)),
 
         ],
 
@@ -840,11 +896,13 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
           ),
 
+          // ================= History Panel (Left) =================
+
           AnimatedPositioned(
 
             duration: const Duration(milliseconds: 300),
 
-            right: panelOpen ? 0 : -MediaQuery.of(context).size.width * 0.7,
+            left: leftPanelOpen ? 0 : -MediaQuery.of(context).size.width * 0.7,
 
             top: 0,
 
@@ -868,9 +926,15 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                     children: [
 
-                      const Text("History", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text("History",
 
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => panelOpen = false)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+                      IconButton(
+
+                          icon: const Icon(Icons.close),
+
+                          onPressed: () => setState(() => leftPanelOpen = false)),
 
                     ],
 
@@ -884,71 +948,163 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                       itemCount: history.length,
 
-                      itemBuilder: (context, index) => ListTile(title: Text(history[index])),
+                      itemBuilder: (context, index) =>
+
+                          ListTile(title: Text(history[index])),
 
                     ),
 
                   ),
 
-                  if (!premiumManager.isPremium)
+                ],
 
-                    ElevatedButton(
+              ),
 
-                      onPressed: isRewardedReady && rewardedAd != null
+            ),
 
-                          ? () async {
+          ),
 
-                              await adsManager.showRewardedAd(rewardedAd!, premiumManager);
+          // ================= Premium Panel (Right) =================
 
-                              await _saveRewardedTime();
+          AnimatedPositioned(
 
-                              rewardedAd = null;
+            duration: const Duration(milliseconds: 300),
 
-                              isRewardedReady = false;
+            right: rightPanelOpen ? 0 : -MediaQuery.of(context).size.width * 0.7,
 
-                              adsManager.loadRewardedAd(onLoaded: (ad) {
+            top: 0,
 
-                                rewardedAd = ad;
+            bottom: 0,
 
-                                isRewardedReady = true;
+            width: MediaQuery.of(context).size.width * 0.7,
 
-                              });
+            child: Container(
 
-                              setState(() {}); // Refresh UI after reward
+              color: Theme.of(context).colorScheme.surface,
 
-                            }
+              padding: const EdgeInsets.all(16),
 
-                          : null,
+              child: Column(
 
-                      style: ElevatedButton.styleFrom(
+                children: [
 
-                        backgroundColor: Colors.amber,
+                  Row(
 
-                        foregroundColor: Colors.black,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    children: [
 
-                      ),
+                      const Text("Premium",
 
-                      child: const Text("Watch Ad for Premium", style: TextStyle(fontSize: 16)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+                      IconButton(
+
+                          icon: const Icon(Icons.close),
+
+                          onPressed: () => setState(() => rightPanelOpen = false)),
+
+                    ],
+
+                  ),
+
+                  const Divider(),
+
+                  Expanded(
+
+                    child: Column(
+
+                      mainAxisAlignment: MainAxisAlignment.center,
+
+                      children: [
+
+                        if (!premiumManager.isPremium)
+
+                          const Padding(
+
+                            padding: EdgeInsets.all(8.0),
+
+                            child: Text("Not a Premium User. Unlock features by watching ads.",
+
+                                textAlign: TextAlign.center,
+
+                                style: TextStyle(fontSize: 16)),
+
+                          ),
+
+                        if (!premiumManager.isPremium)
+
+                          ElevatedButton(
+
+                            onPressed: isRewardedReady && rewardedAd != null
+
+                                ? () async {
+
+                                    await adsManager.showRewardedAd(
+
+                                        rewardedAd!, premiumManager);
+
+                                    await _saveRewardedTime();
+
+                                    rewardedAd = null;
+
+                                    isRewardedReady = false;
+
+                                    adsManager.loadRewardedAd(onLoaded: (ad) {
+
+                                      rewardedAd = ad;
+
+                                      isRewardedReady = true;
+
+                                    });
+
+                                    setState(() {}); // Refresh UI after reward
+
+                                  }
+
+                                : null,
+
+                            style: ElevatedButton.styleFrom(
+
+                              backgroundColor: Colors.amber,
+
+                              foregroundColor: Colors.black,
+
+                              padding: const EdgeInsets.symmetric(
+
+                                  vertical: 12, horizontal: 24),
+
+                            ),
+
+                            child: const Text("Watch Ad for Premium",
+
+                                style: TextStyle(fontSize: 16)),
+
+                          ),
+
+                        if (premiumManager.isPremium)
+
+                          Padding(
+
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+
+                            child: Text(
+
+                              "Premium Active: ${premiumManager.remaining.inMinutes} min left",
+
+                              style: const TextStyle(
+
+                                  fontSize: 14, fontWeight: FontWeight.w500),
+
+                            ),
+
+                          ),
+
+                      ],
 
                     ),
 
-                  if (premiumManager.isPremium)
-
-                    Padding(
-
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-
-                      child: Text(
-
-                        "Premium Active: ${premiumManager.remaining.inMinutes} min left",
-
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-
-                      ),
-
-                    ),
+                  ),
 
                 ],
 
