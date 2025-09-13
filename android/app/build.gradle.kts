@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services") // ✅ Firebase plugin
 }
@@ -29,23 +28,24 @@ android {
     }
 
     signingConfigs {
-        release {
-            if (System.getenv("CM_KEYSTORE_PATH")) {
-                storeFile file(System.getenv("CM_KEYSTORE_PATH"))
-                storePassword System.getenv("CM_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("CM_KEY_ALIAS")
-                keyPassword System.getenv("CM_KEY_PASSWORD")
+        create("release") {
+            val keystorePath = System.getenv("CM_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            // Optional: enable shrinking & obfuscation for smaller APK
-            // minifyEnabled true
-            // shrinkResources true
-            // proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            // Optional: shrink and obfuscate
+            // isMinifyEnabled = true
+            // isShrinkResources = true
+            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
