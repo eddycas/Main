@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'dart:math';
 
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -118,15 +120,17 @@ class PremiumManager {
 
   DateTime? premiumUntil;
 
-  Timer? _timer;
-
-  Duration remaining = Duration.zero;
+  final ValueNotifier<Duration> remainingNotifier = ValueNotifier(Duration.zero);
 
 
 
   bool get isPremium =>
 
       premiumUntil != null && DateTime.now().isBefore(premiumUntil!);
+
+
+
+  Timer? _timer;
 
 
 
@@ -174,7 +178,7 @@ class PremiumManager {
 
       final diff = premiumUntil!.difference(DateTime.now());
 
-      remaining = diff.isNegative ? Duration.zero : diff;
+      remainingNotifier.value = diff.isNegative ? Duration.zero : diff;
 
       if (diff.isNegative) {
 
@@ -190,7 +194,13 @@ class PremiumManager {
 
 
 
-  void dispose() => _timer?.cancel();
+  void dispose() {
+
+    _timer?.cancel();
+
+    remainingNotifier.dispose();
+
+  }
 
 }
 
@@ -290,13 +300,15 @@ class AdsManager {
 
 
 
-  Future<void> showRewardedAd(
+  Future<void> showRewardedAd(RewardedAd ad, PremiumManager premiumManager,
 
-      RewardedAd ad, PremiumManager premiumManager) async {
+      {VoidCallback? onCompleted}) async {
 
     ad.show(onUserEarnedReward: (_, __) {
 
       premiumManager.unlockPremium(hours: 1);
+
+      if (onCompleted != null) onCompleted();
 
     });
 
@@ -318,9 +330,7 @@ class AdsManager {
 
           interstitialAd = ad;
 
-          interstitialAd!.fullScreenContentCallback =
-
-              FullScreenContentCallback(
+          interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
 
             onAdDismissedFullScreenContent: (ad) {
 
@@ -402,7 +412,9 @@ class CalculatorLogic {
 
         if (state.expression.isEmpty) return;
 
-        String exp = state.expression.replaceAll('×', '*').replaceAll('÷', '/');
+        String exp =
+
+            state.expression.replaceAll('×', '*').replaceAll('÷', '/');
 
         Parser p = Parser();
 
@@ -414,15 +426,13 @@ class CalculatorLogic {
 
         state.result = eval % 1 == 0 ? eval.toInt().toString() : eval.toString();
 
+        if (state.lastCalculationSuccessful) {
 
+          state.history.insert(0, "${state.expression} = ${state.result}");
 
-        // Save history
+          if (state.history.length > 10) state.history.removeLast();
 
-        state.history.insert(0, "${state.expression} = ${state.result}");
-
-        if (state.history.length > 10) state.history.removeLast(); // Keep 10 latest
-
-
+        }
 
         state.expression = "";
 
@@ -446,7 +456,9 @@ class CalculatorLogic {
 
       if (state.expression.isNotEmpty) {
 
-        state.expression = state.expression.substring(0, state.expression.length - 1);
+        state.expression =
+
+            state.expression.substring(0, state.expression.length - 1);
 
       }
 
@@ -494,7 +506,9 @@ class CalculatorKeypad extends StatelessWidget {
 
   final ThemeMode themeMode;
 
-  const CalculatorKeypad({super.key, required this.onPressed, required this.themeMode});
+  const CalculatorKeypad(
+
+      {super.key, required this.onPressed, required this.themeMode});
 
 
 
@@ -518,13 +532,9 @@ class CalculatorKeypad extends StatelessWidget {
 
 
 
-    Color getButtonColor(String btn) {
+    Color getButtonColor(String btn) =>
 
-      if (themeMode == ThemeMode.light) return Colors.white;
-
-      return Colors.black;
-
-    }
+        themeMode == ThemeMode.light ? Colors.white : Colors.black;
 
 
 
@@ -532,11 +542,9 @@ class CalculatorKeypad extends StatelessWidget {
 
       if (btn == 'DEL') return Colors.red;
 
-      if (['+', '-', '×', '÷'].contains(btn)) return Colors.blue;
+      if (['+', '-', '×', '÷', '='].contains(btn)) return Colors.blue;
 
-      if (themeMode == ThemeMode.light) return Colors.black;
-
-      return Colors.white; // invert for dark mode
+      return themeMode == ThemeMode.light ? Colors.black : Colors.white;
 
     }
 
@@ -578,11 +586,15 @@ class CalculatorKeypad extends StatelessWidget {
 
                       elevation: 5,
 
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(26),
 
                     ),
 
-                    child: Text(btn, style: TextStyle(fontSize: 24, color: getTextColor(btn))),
+                    child: Text(btn,
+
+                        style:
+
+                            TextStyle(fontSize: 32, color: getTextColor(btn))),
 
                   ),
 
@@ -618,7 +630,11 @@ class CalculatorHome extends StatefulWidget {
 
   final ThemeMode themeMode;
 
-  const CalculatorHome({super.key, required this.toggleTheme, required this.themeMode});
+  const CalculatorHome(
+
+      {super.key, required this.toggleTheme, required this.themeMode});
+
+
 
   @override
 
@@ -644,17 +660,19 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
   bool rightPanelOpen = false;
 
+
+
   bool isTopBannerLoaded = false;
 
   bool isBottomBannerLoaded = false;
+
+
 
   RewardedAd? rewardedAd;
 
   bool isRewardedReady = false;
 
 
-
-  int calculationCount = 0;
 
   bool lastCalculationSuccessful = false;
 
@@ -666,9 +684,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
-  DateTime? lastInterstitialTime;
-
-  DateTime? lastRewardedTime;
+  bool isRewardedLoading = false;
 
 
 
@@ -682,71 +698,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
     adsManager = AdsManager();
 
-    _loadCooldowns();
+
+
+    _loadHistory();
 
     premiumManager.loadPremium();
 
-    _loadHistory();
+
 
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
 
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
 
-    adsManager.loadRewardedAd(onLoaded: (ad) {
-
-      rewardedAd = ad;
-
-      isRewardedReady = true;
-
-    });
+    _loadRewardedAd();
 
     adsManager.loadInterstitial();
-
-  }
-
-
-
-  Future<void> _loadCooldowns() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    final interstitialMillis = prefs.getInt('last_interstitial_time');
-
-    if (interstitialMillis != null)
-
-      lastInterstitialTime = DateTime.fromMillisecondsSinceEpoch(interstitialMillis);
-
-
-
-    final rewardedMillis = prefs.getInt('last_rewarded_time');
-
-    if (rewardedMillis != null)
-
-      lastRewardedTime = DateTime.fromMillisecondsSinceEpoch(rewardedMillis);
-
-  }
-
-
-
-  Future<void> _saveInterstitialTime() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    lastInterstitialTime = DateTime.now();
-
-    await prefs.setInt('last_interstitial_time', lastInterstitialTime!.millisecondsSinceEpoch);
-
-  }
-
-
-
-  Future<void> _saveRewardedTime() async {
-
-    final prefs = await SharedPreferences.getInstance();
-
-    lastRewardedTime = DateTime.now();
-
-    await prefs.setInt('last_rewarded_time', lastRewardedTime!.millisecondsSinceEpoch);
 
   }
 
@@ -758,9 +724,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
     final savedHistory = prefs.getStringList('calc_history') ?? [];
 
-    history.clear();
-
-    history.addAll(savedHistory.take(10)); // Load latest 10 calculations
+    history.addAll(savedHistory);
 
   }
 
@@ -770,71 +734,57 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setStringList('calc_history', history.take(10).toList());
+    await prefs.setStringList('calc_history', history);
 
   }
 
 
 
-  bool _canShowInterstitial() =>
+  Future<void> _loadRewardedAd() async {
 
-      lastInterstitialTime == null || DateTime.now().difference(lastInterstitialTime!) >= const Duration(minutes: 20);
+    isRewardedLoading = true;
 
+    adsManager.loadRewardedAd(onLoaded: (ad) {
 
+      rewardedAd = ad;
 
-  bool _canShowRewarded() =>
+      isRewardedReady = true;
 
-      lastRewardedTime == null || DateTime.now().difference(lastRewardedTime!) >= const Duration(hours: 1);
+      isRewardedLoading = false;
 
+      setState(() {});
 
+    });
 
-  void handleCalculation(String btn) async {
-
-    setState(() => CalculatorLogic.handleButton(btn, this));
-
-
-
-    if (lastCalculationSuccessful) {
-
-      calculationCount++;
-
-      await _saveHistory(); // Persist history
+  }
 
 
 
-      bool showInterstitial = calculationCount % 20 == 0 && _canShowInterstitial();
+  Future<void> _watchRewardedAd() async {
 
-      bool showRewarded = calculationCount % 50 == 0 && _canShowRewarded() && isRewardedReady;
+    if (isRewardedReady && rewardedAd != null) {
 
+      await adsManager.showRewardedAd(rewardedAd!, premiumManager, onCompleted: () {
 
+        ScaffoldMessenger.of(context).showSnackBar(
 
-      if (showInterstitial) {
+            const SnackBar(content: Text("Premium unlocked for 1 hour!")));
 
-        adsManager.showInterstitial();
+      });
 
-        await _saveInterstitialTime();
+      rewardedAd = null;
 
-      }
+      isRewardedReady = false;
 
-      if (showRewarded && rewardedAd != null) {
+      _loadRewardedAd();
 
-        await adsManager.showRewardedAd(rewardedAd!, premiumManager);
+      setState(() {});
 
-        await _saveRewardedTime();
+    } else {
 
-        rewardedAd = null;
+      ScaffoldMessenger.of(context)
 
-        isRewardedReady = false;
-
-        adsManager.loadRewardedAd(onLoaded: (ad) {
-
-          rewardedAd = ad;
-
-          isRewardedReady = true;
-
-        });
-
-      }
+          .showSnackBar(const SnackBar(content: Text("Ad is loading...")));
 
     }
 
@@ -849,6 +799,8 @@ class CalculatorHomeState extends State<CalculatorHome> {
     premiumManager.dispose();
 
     adsManager.disposeAll();
+
+    _saveHistory();
 
     super.dispose();
 
@@ -898,6 +850,8 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
         children: [
 
+          // Main Column
+
           Column(
 
             mainAxisAlignment: MainAxisAlignment.center,
@@ -912,17 +866,53 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                 child: Center(
 
-                  child: Text(
+                  child: Row(
 
-                    result,
+                    mainAxisAlignment: MainAxisAlignment.center,
 
-                    style: TextStyle(
+                    children: [
 
-                        fontSize: 48,
+                      Text(
 
-                        fontWeight: FontWeight.bold,
+                        result,
 
-                        color: widget.themeMode == ThemeMode.light ? Colors.black : Colors.white),
+                        style: TextStyle(
+
+                            fontSize: 48,
+
+                            fontWeight: FontWeight.bold,
+
+                            color: widget.themeMode == ThemeMode.light
+
+                                ? Colors.black
+
+                                : Colors.white),
+
+                      ),
+
+                      if (memory != 0)
+
+                        const Padding(
+
+                          padding: EdgeInsets.only(left: 6.0),
+
+                          child: Text(
+
+                            "M",
+
+                            style: TextStyle(
+
+                                fontSize: 24,
+
+                                fontWeight: FontWeight.bold,
+
+                                color: Colors.green),
+
+                          ),
+
+                        ),
+
+                    ],
 
                   ),
 
@@ -930,7 +920,19 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
               ),
 
-              Expanded(child: CalculatorKeypad(onPressed: handleCalculation, themeMode: widget.themeMode)),
+              Expanded(
+
+                child: CalculatorKeypad(
+
+                  onPressed: (btn) => setState(
+
+                      () => CalculatorLogic.handleButton(btn, this)),
+
+                  themeMode: widget.themeMode,
+
+                ),
+
+              ),
 
               if (isBottomBannerLoaded)
 
@@ -942,11 +944,13 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
-          // ================= History Panel (Left) =================
+          // History Panel (Left)
 
           AnimatedPositioned(
 
             duration: const Duration(milliseconds: 300),
+
+            curve: Curves.easeInOut,
 
             left: leftPanelOpen ? 0 : -screenWidth * 0.7,
 
@@ -974,7 +978,9 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                       const Text("History",
 
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          style:
+
+                              TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
                       IconButton(
 
@@ -994,9 +1000,47 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                       itemCount: history.length,
 
-                      itemBuilder: (context, index) => ListTile(title: Text(history[index])),
+                      itemBuilder: (context, index) =>
+
+                          ListTile(title: Text(history[index])),
 
                     ),
+
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  ElevatedButton(
+
+                    onPressed: _watchRewardedAd,
+
+                    style: ElevatedButton.styleFrom(
+
+                      backgroundColor: Colors.amber,
+
+                      foregroundColor: Colors.black,
+
+                      padding:
+
+                          const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+
+                      shape: RoundedRectangleBorder(
+
+                          borderRadius: BorderRadius.circular(12)),
+
+                    ),
+
+                    child: isRewardedLoading
+
+                        ? const SizedBox(
+
+                            height: 24,
+
+                            width: 24,
+
+                            child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3))
+
+                        : const Text("Watch Ad to +30 History"),
 
                   ),
 
@@ -1010,19 +1054,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
 
 
-          // ================= Premium Panel (Right) =================
+          // Premium Panel (Right)
 
           AnimatedPositioned(
 
             duration: const Duration(milliseconds: 300),
 
-            right: rightPanelOpen ? (screenWidth * 0.25) : -screenWidth * 0.5,
+            curve: Curves.easeInOut,
 
-            top: screenHeight * 0.25,
+            right: rightPanelOpen ? 0 : -screenWidth * 0.6,
 
-            bottom: screenHeight * 0.25,
+            top: 0,
 
-            width: screenWidth * 0.5,
+            bottom: 0,
+
+            width: screenWidth * 0.6,
 
             child: ClipRRect(
 
@@ -1046,7 +1092,9 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                         const Text("Premium",
 
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            style: TextStyle(
+
+                                fontSize: 18, fontWeight: FontWeight.bold)),
 
                         IconButton(
 
@@ -1076,11 +1124,13 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                               child: Text(
 
-                                  "Not a Premium User. Unlock features by watching ads.",
+                                "Not a Premium User. Unlock features by watching ads.",
 
-                                  textAlign: TextAlign.center,
+                                textAlign: TextAlign.center,
 
-                                  style: TextStyle(fontSize: 16)),
+                                style: TextStyle(fontSize: 16),
+
+                              ),
 
                             ),
 
@@ -1088,107 +1138,93 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
                             ElevatedButton(
 
-                              onPressed: isRewardedReady && rewardedAd != null
-
-                                  ? () async {
-
-                                      await adsManager.showRewardedAd(
-
-                                          rewardedAd!, premiumManager);
-
-                                      await _saveRewardedTime();
-
-                                      rewardedAd = null;
-
-                                      isRewardedReady = false;
-
-                                      adsManager.loadRewardedAd(onLoaded: (ad) {
-
-                                        rewardedAd = ad;
-
-                                        isRewardedReady = true;
-
-                                      });
-
-                                      setState(() {});
-
-                                    }
-
-                                  : null,
+                              onPressed: _watchRewardedAd,
 
                               style: ElevatedButton.styleFrom(
 
-                                backgroundColor: Colors.amber, // golden button
+                                backgroundColor: Colors.amber,
 
                                 foregroundColor: Colors.black,
 
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+
+                                    horizontal: 24, vertical: 12),
 
                                 shape: RoundedRectangleBorder(
 
-                                  borderRadius: BorderRadius.circular(12),
-
-                                ),
+                                    borderRadius: BorderRadius.circular(12)),
 
                               ),
 
-                              child: const Text("Watch Ad to Unlock Premium", textAlign: TextAlign.center),
+              child: isRewardedLoading
+
+                                  ? const SizedBox(
+
+                                      height: 24,
+
+                                      width: 24,
+
+                                      child: CircularProgressIndicator(
+
+                                          color: Colors.black, strokeWidth: 3))
+
+                                  : const Text("Watch Ad to Unlock 1 Hour Premium"),
 
                             ),
 
                           if (premiumManager.isPremium)
 
-                            Padding(
+                            ValueListenableBuilder<Duration>(
 
-                              padding: const EdgeInsets.all(8.0),
+                              valueListenable: premiumManager.remainingNotifier,
 
-                              child: Text(
+                              builder: (context, value, child) {
 
-                                "Premium Active!\nTime remaining: ${premiumManager.remaining.inMinutes.remainder(60).toString().padLeft(2,'0')}:${premiumManager.remaining.inSeconds.remainder(60).toString().padLeft(2,'0')}",
+                                final hours = value.inHours;
 
-                                textAlign: TextAlign.center,
+                                final minutes = value.inMinutes % 60;
 
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                final seconds = value.inSeconds % 60;
 
-                              ),
+                                return Column(
 
-                            ),
+                                  children: [
 
-                          const SizedBox(height: 20),
+                                    const Text(
 
-                          // Example premium features
+                                      "Premium Active!",
 
-                          if (premiumManager.isPremium)
+                                      style: TextStyle(
 
-                            Column(
+                                          fontSize: 18,
 
-                              children: const [
+                                          fontWeight: FontWeight.bold,
 
-                                ListTile(
+                                          color: Colors.green),
 
-                                  leading: Icon(Icons.flash_on),
+                                    ),
 
-                                  title: Text("Faster Calculations"),
+                                    const SizedBox(height: 10),
 
-                                ),
+                                    Text(
 
-                                ListTile(
+                                      "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}",
 
-                                  leading: Icon(Icons.history_toggle_off),
+                                      style: const TextStyle(
 
-                                  title: Text("Unlimited History"),
+                                          fontSize: 24,
 
-                                ),
+                                          fontWeight: FontWeight.bold,
 
-                                ListTile(
+                                          color: Colors.green),
 
-                                  leading: Icon(Icons.lock_open),
+                                    ),
 
-                                  title: Text("Unlock Advanced Functions"),
+                                  ],
 
-                                ),
+                                );
 
-                              ],
+                              },
 
                             ),
 
