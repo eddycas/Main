@@ -1,7 +1,9 @@
 import 'dart:async';
-import 'package:flutter/material.dart'; // ADD THIS
-import 'package:google_mobile_ads/google_mobile_ads.dart'; // ADD THIS
+import 'dart:ui'; // Added for ImageFilter
+import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -60,7 +62,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
     });
   }
 
-  Future<void> _saveHistory() async {
+  Future<void> saveHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('calc_history', history);
   }
@@ -125,7 +127,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
   void dispose() {
     premiumManager.dispose();
     adsManager.disposeAll();
-    _saveHistory();
+    saveHistory();
     super.dispose();
   }
 

@@ -34,7 +34,7 @@ class CalculatorLogic {
 
         state.expression = "";
         state.lastCalculationSuccessful = true;
-        state._saveHistory();
+        state.saveHistory(); // FIXED: Changed from _saveHistory() to saveHistory()
       } catch (_) {
         state.result = "Error";
         state.lastCalculationSuccessful = false;
