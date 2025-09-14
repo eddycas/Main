@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart'; // ADD THIS IMPORT
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'user_activity_logger.dart';
 import 'developer_analytics.dart';
-import 'premium_manager.dart'; // ADD THIS IMPORT
+import 'premium_manager.dart';
 
 class AdsManager {
   BannerAd? topBanner;
@@ -9,7 +10,7 @@ class AdsManager {
   RewardedAd? rewardedAd;
   InterstitialAd? interstitialAd;
 
-  void loadTopBanner({required VoidCallback onLoaded}) { // FIXED: VoidCallback is from flutter.dart
+  void loadTopBanner({required VoidCallback onLoaded}) {
     topBanner = BannerAd(
       adUnitId: "ca-app-pub-3940256099942544/6300978111",
       size: AdSize.banner,
