@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui'; // Added for ImageFilter
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +32,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
   RewardedAd? rewardedAd;
   bool isRewardedReady = false;
   bool lastCalculationSuccessful = false;
+  bool isWatchingAd = false;
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -68,12 +69,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
   }
 
   Future<void> _watchRewardedAd() async {
-    if (isRewardedReady && rewardedAd != null) {
+    if (isRewardedReady && rewardedAd != null && !isWatchingAd) {
+      setState(() => isWatchingAd = true);
+      
       await adsManager.showRewardedAd(rewardedAd!, premiumManager);
+      
       setState(() {
         rewardedAd = null;
         isRewardedReady = false;
       });
+      
+      // Re-enable after 30 seconds
+      Future.delayed(const Duration(seconds: 30), () {
+        setState(() => isWatchingAd = false);
+      });
+      
       adsManager.loadRewardedAd(onLoaded: (ad) {
         setState(() {
           rewardedAd = ad;
@@ -83,13 +93,13 @@ class CalculatorHomeState extends State<CalculatorHome> {
     }
   }
 
-  void _exportUserActivity() async {
+  void _exportPdfReport() async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preparing your activity export...')),
+        const SnackBar(content: Text('Generating PDF report...')),
       );
       
-      await UserActivityLogger.shareUserActivityFile();
+      await UserActivityLogger.sharePdfReport();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error exporting: $e')),
@@ -123,6 +133,41 @@ class CalculatorHomeState extends State<CalculatorHome> {
     );
   }
 
+  void _handleScientificFunction(String function) {
+    setState(() {
+      try {
+        double currentValue = double.tryParse(result) ?? 0;
+        double newValue = 0;
+        
+        switch (function) {
+          case 'SIN':
+            newValue = sin(currentValue * pi / 180);
+            break;
+          case 'COS':
+            newValue = cos(currentValue * pi / 180);
+            break;
+          case 'TAN':
+            newValue = tan(currentValue * pi / 180);
+            break;
+          case 'LOG2':
+            newValue = log(currentValue) / log(2);
+            break;
+          case 'LOG10':
+            newValue = log(currentValue) / log(10);
+            break;
+          case 'LOG25':
+            newValue = log(currentValue) / log(25);
+            break;
+        }
+        
+        result = newValue.toStringAsFixed(6);
+        UserActivityLogger.logUserActivity('scientific', function, result);
+      } catch (e) {
+        result = "Error";
+      }
+    });
+  }
+
   @override
   void dispose() {
     premiumManager.dispose();
@@ -142,8 +187,13 @@ class CalculatorHomeState extends State<CalculatorHome> {
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: _exportUserActivity,
-            tooltip: 'Export my activity',
+            onPressed: () => setState(() => leftPanelOpen = !leftPanelOpen),
+            tooltip: 'History',
+          ),
+          IconButton(
+            icon: const Icon(Icons.description),
+            onPressed: _exportPdfReport,
+            tooltip: 'Export PDF Report',
           ),
           IconButton(
             icon: const Icon(Icons.color_lens),
@@ -155,27 +205,15 @@ class CalculatorHomeState extends State<CalculatorHome> {
             onPressed: () => setState(() => rightPanelOpen = !rightPanelOpen),
             tooltip: 'Premium',
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'clear_activity') {
-                _clearUserActivity();
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'clear_activity',
-                child: Text('Clear My Activity Data'),
-              ),
-            ],
-          ),
         ],
       ),
       body: Stack(
         children: [
-          // Main Column
+          // Main Column with Ads and Keypad
           Column(
             children: [
-              if (isTopBannerLoaded && !premiumManager.isPremium) 
+              // Top Banner Ad (ALWAYS VISIBLE)
+              if (isTopBannerLoaded) 
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.topBanner!)),
               
               // Expression display
@@ -204,16 +242,17 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 ),
               ),
               
-              // Keypad
+              // Keypad (moved upward)
               SizedBox(
-                height: MediaQuery.of(context).size.height * 0.4,
+                height: MediaQuery.of(context).size.height * 0.35,
                 child: CalculatorKeypad(
                   onPressed: (btn) => setState(() => CalculatorLogic.handleButton(btn, this)),
                   themeMode: widget.themeMode,
                 ),
               ),
               
-              if (isBottomBannerLoaded && !premiumManager.isPremium) 
+              // Bottom Banner Ad (ALWAYS VISIBLE)
+              if (isBottomBannerLoaded) 
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.bottomBanner!)),
             ],
           ),
@@ -246,21 +285,21 @@ class CalculatorHomeState extends State<CalculatorHome> {
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: _watchRewardedAd,
+                    onPressed: isWatchingAd ? null : _watchRewardedAd,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Watch Ad to +30 History"),
+                    child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to +30 History"),
                   ),
                 ],
               ),
             ),
           ),
 
-          // Premium Panel (Right)
+          // Premium Panel (Right) with Scientific Functions
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             right: rightPanelOpen ? 0 : -screenWidth * 0.6,
@@ -277,83 +316,70 @@ class CalculatorHomeState extends State<CalculatorHome> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Premium", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text("Scientific Functions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => rightPanelOpen = false)),
                       ],
                     ),
                     const Divider(),
                     Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
                         children: [
-                          if (!premiumManager.isPremium)
-                            const Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Not a Premium User. Unlock features by watching ads.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          if (!premiumManager.isPremium)
-                            ElevatedButton(
-                              onPressed: _watchRewardedAd,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text("Watch Ad to Unlock Premium"),
-                            ),
-                          if (premiumManager.isPremium)
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                "Premium Active!\nTime remaining: ${premiumManager.remaining.inMinutes.remainder(60).toString().padLeft(2,'0')}:${(premiumManager.remaining.inSeconds.remainder(60)).toString().padLeft(2,'0')}",
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          const SizedBox(height: 20),
-                          Expanded(
-                            child: GridView.count(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              children: List.generate(4, (index) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Stack(
-                                    children: [
-                                      Container(
-                                        color: Colors.blueAccent,
-                                        alignment: Alignment.center,
-                                        child: const Text(
-                                          "Premium Btn",
-                                          style: TextStyle(color: Colors.white, fontSize: 16),
-                                        ),
-                                      ),
-                                      if (!premiumManager.isPremium)
-                                        BackdropFilter(
-                                          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                                          child: Container(color: Colors.black.withOpacity(0)),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ),
-                          ),
+                          _buildScientificButton('SIN', 'sin'),
+                          _buildScientificButton('COS', 'cos'),
+                          _buildScientificButton('TAN', 'tan'),
+                          _buildScientificButton('LOG₂', 'log2'),
+                          _buildScientificButton('LOG₁₀', 'log10'),
+                          _buildScientificButton('LOG₂₅', 'log25'),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    if (!premiumManager.isPremium)
+                      ElevatedButton(
+                        onPressed: isWatchingAd ? null : _watchRewardedAd,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to Unlock Premium"),
+                      ),
+                    if (premiumManager.isPremium)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          "Premium Active!\nTime remaining: ${premiumManager.remaining.inMinutes.remainder(60).toString().padLeft(2,'0')}:${(premiumManager.remaining.inSeconds.remainder(60)).toString().padLeft(2,'0')}",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScientificButton(String label, String function) {
+    return ElevatedButton(
+      onPressed: () => _handleScientificFunction(function.toUpperCase()),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; // ADD THIS IMPORT
+import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'user_activity_logger.dart';
 import 'developer_analytics.dart';
@@ -18,9 +18,7 @@ class AdsManager {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           onLoaded();
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_impression', 'top_banner', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'top_banner');
         },
         onAdFailedToLoad: (ad, err) {
@@ -28,9 +26,7 @@ class AdsManager {
           print('Failed to load top banner: $err');
         },
         onAdClicked: (ad) {
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_click', 'top_banner', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('click', 'banner', 'top_banner');
         },
       ),
@@ -45,9 +41,7 @@ class AdsManager {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           onLoaded();
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_impression', 'bottom_banner', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'bottom_banner');
         },
         onAdFailedToLoad: (ad, err) {
@@ -55,9 +49,7 @@ class AdsManager {
           print('Failed to load bottom banner: $err');
         },
         onAdClicked: (ad) {
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('click', 'banner', 'bottom_banner');
         },
       ),
@@ -71,9 +63,7 @@ class AdsManager {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           onLoaded(ad);
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_impression', 'rewarded', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('impression', 'rewarded', 'rewarded_ad');
         },
         onAdFailedToLoad: (err) {
@@ -99,11 +89,8 @@ class AdsManager {
     );
     
     ad.show(onUserEarnedReward: (_, __) {
-      // USER tracking
       UserActivityLogger.logUserActivity('ad_click', 'rewarded', 'premium_1hour');
-      // DEVELOPER tracking
       DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
-      
       premiumManager.unlockPremium(hours: 1);
     });
   }
@@ -115,9 +102,7 @@ class AdsManager {
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           interstitialAd = ad;
-          // USER tracking
           UserActivityLogger.logUserActivity('ad_impression', 'interstitial', '');
-          // DEVELOPER tracking
           DeveloperAnalytics.trackAdEvent('impression', 'interstitial', 'interstitial_ad');
           
           interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -143,9 +128,7 @@ class AdsManager {
   void showInterstitial() {
     if (interstitialAd != null) {
       interstitialAd!.show();
-      // USER tracking
       UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
-      // DEVELOPER tracking
       DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
       interstitialAd = null;
     }

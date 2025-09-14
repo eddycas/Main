@@ -24,34 +24,44 @@ class CalculatorKeypad extends StatelessWidget {
       return themeMode == ThemeMode.light ? Colors.black : Colors.white;
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: buttons.map((row) {
-        return Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: row.map((btn) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: ElevatedButton(
-                    onPressed: () => onPressed(btn),
-                    style: ElevatedButton.styleFrom(
-                      shape: const CircleBorder(),
-                      backgroundColor: getButtonColor(btn),
-                      foregroundColor: getTextColor(btn),
-                      shadowColor: Colors.black54,
-                      elevation: 5,
-                      padding: const EdgeInsets.all(26),
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: buttons.map((row) {
+          return Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: row.map((btn) {
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(4.0),
+                    child: ElevatedButton(
+                      onPressed: () => onPressed(btn),
+                      style: ElevatedButton.styleFrom(
+                        shape: const CircleBorder(),
+                        backgroundColor: getButtonColor(btn),
+                        foregroundColor: getTextColor(btn),
+                        shadowColor: Colors.black54,
+                        elevation: 5,
+                        padding: const EdgeInsets.all(20), // 30% bigger
+                      ),
+                      child: Text(
+                        btn,
+                        style: TextStyle(
+                          fontSize: 28, // Larger font
+                          fontWeight: FontWeight.bold,
+                          color: getTextColor(btn),
+                        ),
+                      ),
                     ),
-                    child: Text(btn, style: TextStyle(fontSize: 32, color: getTextColor(btn))),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      }).toList(),
+                );
+              }).toList(),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

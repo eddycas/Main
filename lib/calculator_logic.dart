@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:math_expressions/math_expressions.dart';
 import 'home.dart';
 import 'user_activity_logger.dart';
@@ -20,26 +21,15 @@ class CalculatorLogic {
           if (state.history.length > 10) state.history.removeLast();
         }
 
-        // USER tracking - log the calculation
-        UserActivityLogger.logUserActivity(
-          'calculation', 
-          state.expression, 
-          state.result
-        );
-        
-        // DEVELOPER tracking - anonymous stats only
-        final operation = _getOperationType(state.expression);
-        final digitCount = _getDigitCount(state.expression);
-        DeveloperAnalytics.trackCalculationStats(operation, digitCount);
+        UserActivityLogger.logUserActivity('calculation', state.expression, state.result);
+        DeveloperAnalytics.trackCalculationStats(_getOperationType(state.expression), _getDigitCount(state.expression));
 
         state.expression = "";
         state.lastCalculationSuccessful = true;
-        state.saveHistory(); // FIXED: Changed from _saveHistory() to saveHistory()
+        state.saveHistory();
       } catch (_) {
         state.result = "Error";
         state.lastCalculationSuccessful = false;
-        
-        // Track errors too
         UserActivityLogger.logUserActivity('error', 'calculation', state.expression);
       }
     } else if (btn == 'C') {
@@ -70,7 +60,6 @@ class CalculatorLogic {
     }
   }
 
-  // Helper methods for developer analytics
   static String _getOperationType(String expression) {
     if (expression.contains('+')) return 'addition';
     if (expression.contains('-')) return 'subtraction';
@@ -80,8 +69,27 @@ class CalculatorLogic {
   }
 
   static int _getDigitCount(String expression) {
-    // Remove operators and get only digits
     final digitsOnly = expression.replaceAll(RegExp(r'[^0-9]'), '');
     return digitsOnly.length;
+  }
+
+  // Scientific functions
+  static double calculateScientific(String function, double value) {
+    switch (function) {
+      case 'SIN':
+        return sin(value * pi / 180);
+      case 'COS':
+        return cos(value * pi / 180);
+      case 'TAN':
+        return tan(value * pi / 180);
+      case 'LOG2':
+        return log(value) / log(2);
+      case 'LOG10':
+        return log(value) / log(10);
+      case 'LOG25':
+        return log(value) / log(25);
+      default:
+        return value;
+    }
   }
 }
