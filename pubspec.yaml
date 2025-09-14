@@ -20,6 +20,8 @@ dependencies:
   google_sign_in: ^6.1.0
   device_info_plus: ^11.5.0          # ✅ Device info plugin
   shared_preferences: ^2.2.0         # ✅ Persistent storage
+  path_provider: ^latest_version
+  share_plus: ^latest_version
 
 dev_dependencies:
   flutter_test:
