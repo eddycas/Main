@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home.dart';
+import 'home.dart'; // MAKE SURE this import exists
 
 class QuickCalcApp extends StatefulWidget {
   const QuickCalcApp({super.key});

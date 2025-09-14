@@ -1,5 +1,5 @@
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:share_plus/share_plus.dart'; // FIXED IMPORT
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,19 +7,16 @@ class UserActivityLogger {
   static final List<String> _activityBuffer = [];
   static const int _maxBufferSize = 50;
   
-  // Log user activity (calculations, ads they saw, etc.)
   static Future<void> logUserActivity(String activityType, String details, [String value = '']) async {
     final timestamp = DateTime.now().toIso8601String();
     final logEntry = '$timestamp|$activityType|$details|$value';
     
     _activityBuffer.add(logEntry);
     
-    // Write to buffer and periodically save to file
     if (_activityBuffer.length >= _maxBufferSize) {
       await _flushBufferToFile();
     }
     
-    // Also save to SharedPreferences for immediate persistence
     await _saveToSharedPreferences(logEntry);
   }
   
@@ -43,19 +40,15 @@ class UserActivityLogger {
     final prefs = await SharedPreferences.getInstance();
     final activities = prefs.getStringList('user_activities') ?? [];
     activities.add(logEntry);
-    // Keep only last 1000 activities to prevent storage bloat
     await prefs.setStringList('user_activities', activities.take(1000).toList());
   }
   
-  // Generate downloadable file for USER
   static Future<File> generateUserActivityFile() async {
-    // Get all activities from buffer and persisted storage
     final prefs = await SharedPreferences.getInstance();
     final savedActivities = prefs.getStringList('user_activities') ?? [];
     
     final allActivities = [..._activityBuffer, ...savedActivities];
     
-    // Create CSV content
     final csvContent = StringBuffer();
     csvContent.writeln('Timestamp,Activity Type,Details,Value');
     
@@ -66,7 +59,6 @@ class UserActivityLogger {
       }
     }
     
-    // Save to temporary file for sharing
     final tempDir = await getTemporaryDirectory();
     final tempFile = File('${tempDir.path}/my_quickcalc_activity.csv');
     await tempFile.writeAsString(csvContent.toString());
@@ -74,11 +66,10 @@ class UserActivityLogger {
     return tempFile;
   }
   
-  // Let user share/download their file
   static Future<void> shareUserActivityFile() async {
     try {
       final file = await generateUserActivityFile();
-      await Share.shareFiles([file.path], 
+      await Share.shareXFiles([XFile(file.path)], // FIXED: Use XFile
         text: 'My QuickCalc Activity Log',
         subject: 'QuickCalc Activity Export'
       );
@@ -87,7 +78,6 @@ class UserActivityLogger {
     }
   }
   
-  // Clear user activity data
   static Future<void> clearUserActivityData() async {
     _activityBuffer.clear();
     final prefs = await SharedPreferences.getInstance();
