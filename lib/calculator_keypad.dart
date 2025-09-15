@@ -25,7 +25,7 @@ class CalculatorKeypad extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(4.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: buttons.map((row) {
@@ -35,23 +35,24 @@ class CalculatorKeypad extends StatelessWidget {
               children: row.map((btn) {
                 return Expanded(
                   child: Container(
-                    margin: const EdgeInsets.all(4.0),
-                    child: ElevatedButton(
-                      onPressed: () => onPressed(btn),
-                      style: ElevatedButton.styleFrom(
-                        shape: const CircleBorder(),
-                        backgroundColor: getButtonColor(btn),
-                        foregroundColor: getTextColor(btn),
-                        shadowColor: Colors.black54,
-                        elevation: 5,
-                        padding: const EdgeInsets.all(20), // 30% bigger
-                      ),
-                      child: Text(
-                        btn,
-                        style: TextStyle(
-                          fontSize: 28, // Larger font
-                          fontWeight: FontWeight.bold,
-                          color: getTextColor(btn),
+                    margin: const EdgeInsets.all(3.0),
+                    child: Material(
+                      shape: const CircleBorder(),
+                      elevation: 5,
+                      color: getButtonColor(btn),
+                      child: InkWell(
+                        onTap: () => onPressed(btn),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: Text(
+                            btn,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: getTextColor(btn),
+                            ),
+                          ),
                         ),
                       ),
                     ),

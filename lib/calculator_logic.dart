@@ -73,7 +73,6 @@ class CalculatorLogic {
     return digitsOnly.length;
   }
 
-  // Scientific functions
   static double calculateScientific(String function, double value) {
     switch (function) {
       case 'SIN':

@@ -63,8 +63,7 @@ class AdsManager {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           onLoaded(ad);
-          UserActivityLogger.logUserActivity('ad_impression', 'rewarded', '');
-          DeveloperAnalytics.trackAdEvent('impression', 'rewarded', 'rewarded_ad');
+          UserActivityLogger.logUserActivity('ad_loaded', 'rewarded', '');
         },
         onAdFailedToLoad: (err) {
           print('Failed to load rewarded ad: $err');
@@ -78,9 +77,15 @@ class AdsManager {
   }
 
   Future<void> showRewardedAd(RewardedAd ad, PremiumManager premiumManager) async {
+    bool adCompleted = false;
+    
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
+        if (adCompleted) {
+          UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'premium_1hour');
+          DeveloperAnalytics.trackAdEvent('watched', 'rewarded', 'rewarded_ad');
+        }
       },
       onAdFailedToShowFullScreenContent: (ad, err) {
         print('Failed to show rewarded ad: $err');
@@ -88,7 +93,8 @@ class AdsManager {
       },
     );
     
-    ad.show(onUserEarnedReward: (_, __) {
+    ad.show(onUserEarnedReward: (_, reward) {
+      adCompleted = true;
       UserActivityLogger.logUserActivity('ad_click', 'rewarded', 'premium_1hour');
       DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
       premiumManager.unlockPremium(hours: 1);
@@ -102,12 +108,13 @@ class AdsManager {
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           interstitialAd = ad;
-          UserActivityLogger.logUserActivity('ad_impression', 'interstitial', '');
-          DeveloperAnalytics.trackAdEvent('impression', 'interstitial', 'interstitial_ad');
+          UserActivityLogger.logUserActivity('ad_loaded', 'interstitial', '');
           
           interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
+              UserActivityLogger.logUserActivity('ad_watched', 'interstitial', '');
+              DeveloperAnalytics.trackAdEvent('watched', 'interstitial', 'interstitial_ad');
               loadInterstitial();
             },
             onAdFailedToShowFullScreenContent: (ad, err) {
@@ -130,7 +137,6 @@ class AdsManager {
       interstitialAd!.show();
       UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
       DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
-      interstitialAd = null;
     }
   }
 

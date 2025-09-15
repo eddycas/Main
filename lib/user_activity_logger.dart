@@ -51,14 +51,13 @@ class UserActivityLogger {
     final savedActivities = prefs.getStringList('user_activities') ?? [];
     final allActivities = [..._activityBuffer, ...savedActivities];
 
-    // Organize activities by type
+    // Organize activities by type with proper filtering
     final Map<String, List<Map<String, String>>> organizedActivities = {
       'Ads Shown': [],
       'Ads Clicked': [],
       'Ads Watched': [],
       'Calculations': [],
       'Premium Activities': [],
-      'Other': [],
     };
 
     for (final activity in allActivities) {
@@ -75,18 +74,17 @@ class UserActivityLogger {
           'value': value
         };
 
-        if (type == 'ad_impression') {
+        // Accurate categorization
+        if (type == 'ad_impression' || type == 'ad_loaded') {
           organizedActivities['Ads Shown']!.add(activityMap);
         } else if (type == 'ad_click') {
           organizedActivities['Ads Clicked']!.add(activityMap);
-        } else if (type.contains('ad_watch') || type.contains('reward')) {
+        } else if (type == 'ad_watched') {
           organizedActivities['Ads Watched']!.add(activityMap);
-        } else if (type == 'calculation') {
+        } else if (type == 'calculation' || type == 'scientific') {
           organizedActivities['Calculations']!.add(activityMap);
-        } else if (type.contains('premium')) {
+        } else if (type.contains('premium') || value.contains('premium')) {
           organizedActivities['Premium Activities']!.add(activityMap);
-        } else {
-          organizedActivities['Other']!.add(activityMap);
         }
       }
     }
@@ -109,10 +107,11 @@ class UserActivityLogger {
                     itemCount: category.value.length,
                     itemBuilder: (context, index) {
                       final activity = category.value[index];
+                      final time = DateTime.parse(activity['timestamp']!);
                       return pw.Padding(
                         padding: const pw.EdgeInsets.symmetric(vertical: 4),
                         child: pw.Text(
-                          '• ${activity['timestamp']!.substring(0, 16)} - ${activity['details']} ${activity['value']!.isNotEmpty ? '(${activity['value']})' : ''}',
+                          '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']} ${activity['value']!.isNotEmpty ? '(${activity['value']})' : ''}',
                           style: const pw.TextStyle(fontSize: 12),
                         ),
                       );
