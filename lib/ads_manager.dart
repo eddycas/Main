@@ -9,14 +9,13 @@ class AdsManager {
   BannerAd? bottomBanner;
   RewardedAd? rewardedAd;
   InterstitialAd? interstitialAd;
-  AppOpenAd? appOpenAd; // NEW: App Open Ad
-  bool isAppOpenAdLoaded = false; // NEW: Track app open ad state
+  AppOpenAd? appOpenAd;
+  bool isAppOpenAdLoaded = false;
 
-  // NEW: Load App Open Ad
+  // FIXED: Updated App Open Ad API
   void loadAppOpenAd() {
     AppOpenAd.load(
-      adUnitId: "ca-app-pub-3940256099942544/3419835294", // Test app open ad ID
-      orientation: AppOpenAd.orientationPortrait,
+      adUnitId: "ca-app-pub-3940256099942544/3419835294",
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
@@ -24,37 +23,33 @@ class AdsManager {
           isAppOpenAdLoaded = true;
           print('App Open Ad loaded successfully');
           
-          // Set full screen content callback
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
               isAppOpenAdLoaded = false;
-              loadAppOpenAd(); // Load next app open ad
+              loadAppOpenAd();
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               print('Failed to show app open ad: $error');
               ad.dispose();
               isAppOpenAdLoaded = false;
-              loadAppOpenAd(); // Load next app open ad
+              loadAppOpenAd();
             },
           );
         },
         onAdFailedToLoad: (error) {
           print('Failed to load app open ad: $error');
           isAppOpenAdLoaded = false;
-          // Retry after delay
           Future.delayed(const Duration(minutes: 1), loadAppOpenAd);
         },
       ),
     );
   }
 
-  // NEW: Show App Open Ad
   Future<void> showAppOpenAd() async {
     if (isAppOpenAdLoaded && appOpenAd != null) {
       try {
         appOpenAd!.show();
-        // Track app open ad impression
         DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
       } catch (e) {
         print('Error showing app open ad: $e');
@@ -191,6 +186,6 @@ class AdsManager {
     bottomBanner?.dispose();
     rewardedAd?.dispose();
     interstitialAd?.dispose();
-    appOpenAd?.dispose(); // NEW: Dispose app open ad
+    appOpenAd?.dispose();
   }
 }

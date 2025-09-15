@@ -5,7 +5,7 @@ import 'user_activity_logger.dart';
 import 'developer_analytics.dart';
 
 class CalculatorLogic {
-  static int _calculationCount = 0; // Track calculations for interstitial ads
+  static int _calculationCount = 0;
 
   static void handleButton(String btn, CalculatorHomeState state) {
     if (btn == '=') {
@@ -23,25 +23,17 @@ class CalculatorLogic {
           if (state.history.length > 10) state.history.removeLast();
         }
 
-        // USER tracking - log the calculation
         UserActivityLogger.logUserActivity(
           'calculation', 
           state.expression, 
           state.result
         );
         
-        // DEVELOPER tracking - anonymous stats only
         final operation = _getOperationType(state.expression);
         final digitCount = _getDigitCount(state.expression);
         DeveloperAnalytics.trackCalculationStats(operation, digitCount);
 
-        // Increment calculation count for interstitial ads
         _calculationCount++;
-        
-        // Notify home state about calculation count for interstitial triggering
-        if (state.onCalculationCountChanged != null) {
-          state.onCalculationCountChanged!(_calculationCount);
-        }
 
         state.expression = "";
         state.lastCalculationSuccessful = true;
@@ -49,8 +41,6 @@ class CalculatorLogic {
       } catch (_) {
         state.result = "Error";
         state.lastCalculationSuccessful = false;
-        
-        // Track errors too
         UserActivityLogger.logUserActivity('error', 'calculation', state.expression);
       }
     } else if (btn == 'C') {
@@ -81,7 +71,6 @@ class CalculatorLogic {
     }
   }
 
-  // Helper methods for developer analytics
   static String _getOperationType(String expression) {
     if (expression.contains('+')) return 'addition';
     if (expression.contains('-')) return 'subtraction';
@@ -91,7 +80,6 @@ class CalculatorLogic {
   }
 
   static int _getDigitCount(String expression) {
-    // Remove operators and get only digits
     final digitsOnly = expression.replaceAll(RegExp(r'[^0-9]'), '');
     return digitsOnly.length;
   }
@@ -115,11 +103,9 @@ class CalculatorLogic {
     }
   }
 
-  // Reset calculation counter (for testing or after interstitial shown)
   static void resetCalculationCount() {
     _calculationCount = 0;
   }
 
-  // Get current calculation count
   static int get calculationCount => _calculationCount;
 }
