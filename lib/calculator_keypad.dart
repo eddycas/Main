@@ -25,7 +25,7 @@ class CalculatorKeypad extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(4.0),
+      padding: const EdgeInsets.all(2.0), // Tighter padding
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: buttons.map((row) {
@@ -35,10 +35,10 @@ class CalculatorKeypad extends StatelessWidget {
               children: row.map((btn) {
                 return Expanded(
                   child: Container(
-                    margin: const EdgeInsets.all(3.0),
+                    margin: const EdgeInsets.all(1.5), // Tighter spacing
                     child: Material(
                       shape: const CircleBorder(),
-                      elevation: 5,
+                      elevation: 4,
                       color: getButtonColor(btn),
                       child: InkWell(
                         onTap: () => onPressed(btn),
@@ -48,7 +48,7 @@ class CalculatorKeypad extends StatelessWidget {
                           child: Text(
                             btn,
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 32, // 30% larger (28 → 32)
                               fontWeight: FontWeight.bold,
                               color: getTextColor(btn),
                             ),

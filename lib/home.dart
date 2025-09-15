@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
-import 'dart:math'; // ADD THIS IMPORT
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,7 +21,7 @@ class CalculatorHome extends StatefulWidget {
   CalculatorHomeState createState() => CalculatorHomeState();
 }
 
-class CalculatorHomeState extends State<CalculatorHome> {
+class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObserver {
   String expression = "";
   String result = "0";
   final List<String> history = [];
@@ -41,10 +41,14 @@ class CalculatorHomeState extends State<CalculatorHome> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Add lifecycle observer
+    
     premiumManager = PremiumManager();
     adsManager = AdsManager();
     _loadHistory();
     premiumManager.loadPremium();
+    
+    // Load all ads
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
     adsManager.loadRewardedAd(onLoaded: (ad) {
@@ -54,6 +58,15 @@ class CalculatorHomeState extends State<CalculatorHome> {
       });
     });
     adsManager.loadInterstitial();
+    adsManager.loadAppOpenAd(); // Load app open ad
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Show app open ad when app returns to foreground - ALWAYS ACTIVE regardless of premium status
+    if (state == AppLifecycleState.resumed) {
+      adsManager.showAppOpenAd();
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -171,6 +184,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remove lifecycle observer
     premiumManager.dispose();
     adsManager.disposeAll();
     saveHistory();
@@ -213,7 +227,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
           // Main Column with Ads and Keypad
           Column(
             children: [
-              // Top Banner Ad (ALWAYS VISIBLE)
+              // Top Banner Ad (ALWAYS VISIBLE - regardless of premium status)
               if (isTopBannerLoaded) 
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.topBanner!)),
               
@@ -252,7 +266,7 @@ class CalculatorHomeState extends State<CalculatorHome> {
                 ),
               ),
               
-              // Bottom Banner Ad (ALWAYS VISIBLE)
+              // Bottom Banner Ad (ALWAYS VISIBLE - regardless of premium status)
               if (isBottomBannerLoaded) 
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.bottomBanner!)),
             ],

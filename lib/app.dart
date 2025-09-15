@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home.dart'; // MAKE SURE this import exists
+import 'home.dart';
 
 class QuickCalcApp extends StatefulWidget {
   const QuickCalcApp({super.key});
@@ -8,8 +8,27 @@ class QuickCalcApp extends StatefulWidget {
   State<QuickCalcApp> createState() => _QuickCalcAppState();
 }
 
-class _QuickCalcAppState extends State<QuickCalcApp> {
+class _QuickCalcAppState extends State<QuickCalcApp> with WidgetsBindingObserver {
   ThemeMode _themeMode = ThemeMode.light;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this); // ADD THIS
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // ADD THIS
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Forward lifecycle events to home screen
+    final homeState = context.findAncestorStateOfType<CalculatorHomeState>();
+    homeState?.didChangeAppLifecycleState(state);
+  }
 
   void _toggleTheme() => setState(() {
         _themeMode =
