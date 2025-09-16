@@ -41,7 +41,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Add lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
     
     premiumManager = PremiumManager();
     adsManager = AdsManager();
@@ -58,14 +58,21 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       });
     });
     adsManager.loadInterstitial();
-    adsManager.loadAppOpenAd(); // Load app open ad
+    
+    // Load app open ad after a short delay to ensure everything is initialized
+    Future.delayed(const Duration(seconds: 1), () {
+      adsManager.loadAppOpenAd();
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Show app open ad when app returns to foreground - ALWAYS ACTIVE regardless of premium status
+    // Show app open ad when app returns to foreground
     if (state == AppLifecycleState.resumed) {
-      adsManager.showAppOpenAd();
+      // Add a small delay to ensure app is fully resumed
+      Future.delayed(const Duration(milliseconds: 500), () {
+        adsManager.showAppOpenAd();
+      });
     }
   }
 
@@ -184,7 +191,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
     premiumManager.dispose();
     adsManager.disposeAll();
     saveHistory();
