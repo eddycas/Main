@@ -12,10 +12,10 @@ class AdsManager {
   AppOpenAd? appOpenAd;
   bool isAppOpenAdLoaded = false;
 
-  // FIXED: Updated App Open Ad API
+  // FIXED: Updated App Open Ad loading with current API
   void loadAppOpenAd() {
     AppOpenAd.load(
-      adUnitId: "ca-app-pub-3940256099942544/3419835294",
+      adUnitId: "ca-app-pub-3940256099942544/3419835294", // Test app open ad ID
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
@@ -23,37 +23,44 @@ class AdsManager {
           isAppOpenAdLoaded = true;
           print('App Open Ad loaded successfully');
           
+          // Set full screen content callback
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
               isAppOpenAdLoaded = false;
-              loadAppOpenAd();
+              loadAppOpenAd(); // Load next app open ad
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               print('Failed to show app open ad: $error');
               ad.dispose();
               isAppOpenAdLoaded = false;
-              loadAppOpenAd();
+              loadAppOpenAd(); // Load next app open ad
             },
           );
         },
         onAdFailedToLoad: (error) {
           print('Failed to load app open ad: $error');
           isAppOpenAdLoaded = false;
+          // Retry after delay
           Future.delayed(const Duration(minutes: 1), loadAppOpenAd);
         },
       ),
     );
   }
 
+  // Show App Open Ad
   Future<void> showAppOpenAd() async {
     if (isAppOpenAdLoaded && appOpenAd != null) {
       try {
         appOpenAd!.show();
+        // Track app open ad impression
         DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
+        UserActivityLogger.logUserActivity('ad_impression', 'app_open', '');
       } catch (e) {
         print('Error showing app open ad: $e');
       }
+    } else {
+      print('App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
     }
   }
 
