@@ -7,8 +7,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart'; // ADDED: For PDF encryption
-import 'package:pdf/widgets.dart' as pw; // ADDED: For PDF encryption
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -135,7 +135,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  // NEW: Create password-protected PDF
+  // FIXED: Create password-protected PDF with correct API
   Future<File> _createPasswordProtectedPdf() async {
     try {
       // Get user activities for the report
@@ -180,8 +180,24 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         }
       }
 
-      // Create PDF with password protection
-      final pdf = pw.Document();
+      // Create PDF with password protection - FIXED API
+      final pdf = pw.Document(
+        // CORRECT WAY: Set encryption during document creation
+        theme: pw.ThemeData.withFont(
+          base: await PdfGoogleFonts.robotoRegular(),
+        ),
+        // Set password protection here
+        encryption: pw.Encryption(
+          userPassword: _pdfPassword,
+          ownerPassword: _pdfPassword,
+          permissions: pw.Permissions(
+            printing: pw.Printing.allow, // Allow printing
+            copying: pw.Copying.allow, // Allow copying
+            modifying: pw.Modifying.allow, // Allow modifying
+          ),
+        ),
+      );
+
       pdf.addPage(
         pw.Page(
           build: (pw.Context context) {
@@ -215,13 +231,10 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         ),
       );
 
-      // Encrypt the PDF with your password
-      final encryptedPdf = pdf.encrypt(_pdfPassword);
-
       // Save to temporary file
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      await file.writeAsBytes(await encryptedPdf.save());
+      await file.writeAsBytes(await pdf.save());
 
       return file;
     } catch (e) {
