@@ -53,3 +53,4 @@ yamtar/
  yamtarr/
 linux/flutter/
 macos/Flutter/GeneratedPluginRegistrant.*
+.git-credentials
