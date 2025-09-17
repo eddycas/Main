@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart'; // ADDED: For getTemporaryDirectory
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart'; // ADDED: For PDF encryption
+import 'package:pdf/widgets.dart' as pw; // ADDED: For PDF encryption
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -43,7 +45,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   // Timer for PDF export cooldown
   DateTime? _lastExportAdTime;
 
-  // Simple PDF password - YOUR CODE HERE
+  // PDF password - YOUR CODE HERE
   static const String _pdfPassword = 'b"&38+:)fas4#0@ghc62@7/#';
 
   late PremiumManager premiumManager;
@@ -70,7 +72,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     });
     adsManager.loadInterstitial();
 
-    // Load app open ad - FIXED: This should be called after adsManager is initialized
+    // Load app open ad
     Future.delayed(const Duration(seconds: 2), () {
       adsManager.loadAppOpenAd();
     });
@@ -78,9 +80,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Show app open ad when app returns to foreground
     if (state == AppLifecycleState.resumed) {
-      // Add a small delay to ensure app is fully resumed
       Future.delayed(const Duration(milliseconds: 500), () {
         adsManager.showAppOpenAd();
       });
@@ -122,7 +122,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         isRewardedReady = false;
       });
 
-      // Re-enable after 30 seconds
       Future.delayed(const Duration(seconds: 30), () {
         setState(() => isWatchingAd = false);
       });
@@ -136,15 +135,109 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  // SIMPLIFIED APPROACH: We'll just tell the user the password
+  // NEW: Create password-protected PDF
+  Future<File> _createPasswordProtectedPdf() async {
+    try {
+      // Get user activities for the report
+      final prefs = await SharedPreferences.getInstance();
+      final savedActivities = prefs.getStringList('user_activities') ?? [];
+      final allActivities = [...savedActivities];
+
+      // Organize activities by type
+      final Map<String, List<Map<String, String>>> organizedActivities = {
+        'Ads Shown': [],
+        'Ads Clicked': [],
+        'Ads Watched': [],
+        'Calculations': [],
+        'Premium Activities': [],
+      };
+
+      for (final activity in allActivities) {
+        final parts = activity.split('|');
+        if (parts.length == 4) {
+          final timestamp = parts[0];
+          final type = parts[1];
+          final details = parts[2];
+          final value = parts[3];
+
+          final activityMap = {
+            'timestamp': DateTime.parse(timestamp).toString(),
+            'details': details,
+            'value': value
+          };
+
+          if (type == 'ad_impression' || type == 'ad_loaded') {
+            organizedActivities['Ads Shown']!.add(activityMap);
+          } else if (type == 'ad_click') {
+            organizedActivities['Ads Clicked']!.add(activityMap);
+          } else if (type == 'ad_watched') {
+            organizedActivities['Ads Watched']!.add(activityMap);
+          } else if (type == 'calculation' || type == 'scientific') {
+            organizedActivities['Calculations']!.add(activityMap);
+          } else if (type.contains('premium') || value.contains('premium')) {
+            organizedActivities['Premium Activities']!.add(activityMap);
+          }
+        }
+      }
+
+      // Create PDF with password protection
+      final pdf = pw.Document();
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Header(level: 0, text: 'QuickCalc Activity Report'),
+                pw.SizedBox(height: 20),
+                for (final category in organizedActivities.entries)
+                  if (category.value.isNotEmpty) ...[
+                    pw.Header(level: 1, text: category.key),
+                    pw.ListView.builder(
+                      itemCount: category.value.length,
+                      itemBuilder: (context, index) {
+                        final activity = category.value[index];
+                        final time = DateTime.parse(activity['timestamp']!);
+                        return pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                          child: pw.Text(
+                            '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']} ${activity['value']!.isNotEmpty ? '(${activity['value']})' : ''}',
+                            style: const pw.TextStyle(fontSize: 12),
+                          ),
+                        );
+                      },
+                    ),
+                    pw.SizedBox(height: 16),
+                  ]
+              ],
+            );
+          },
+        ),
+      );
+
+      // Encrypt the PDF with your password
+      final encryptedPdf = pdf.encrypt(_pdfPassword);
+
+      // Save to temporary file
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
+      await file.writeAsBytes(await encryptedPdf.save());
+
+      return file;
+    } catch (e) {
+      print('Error creating encrypted PDF: $e');
+      rethrow;
+    }
+  }
+
   void _exportPdfReport() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Generating PDF report...')),
+      const SnackBar(content: Text('Generating encrypted PDF report...')),
     );
 
     final File pdfFile;
     try {
-      pdfFile = await UserActivityLogger.generatePdfReport();
+      pdfFile = await _createPasswordProtectedPdf();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error generating PDF: $e')),
@@ -163,7 +256,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Your report has been protected with a password.'),
+              const Text('Your report has been encrypted with a password.'),
               const SizedBox(height: 16),
               const Text('Password:'),
               const SizedBox(height: 8),
@@ -172,7 +265,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
               ),
               const SizedBox(height: 16),
-              const Text('You will need this password to open the PDF file.'),
+              const Text('You will need this password to open the PDF file in any PDF reader.'),
             ],
           ),
           actions: <Widget>[
@@ -185,7 +278,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       },
     );
 
-    // Share the PDF with the user
+    // Share the encrypted PDF with the user
     try {
       await Share.shareXFiles([XFile(pdfFile.path)],
           text: 'My QuickCalc Activity Report - Password: $_pdfPassword',
@@ -319,7 +412,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               }
             },
             tooltip: 'Premium',
-          },
+          ),
         ],
       ),
       body: Stack(
