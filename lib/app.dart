@@ -8,26 +8,8 @@ class QuickCalcApp extends StatefulWidget {
   State<QuickCalcApp> createState() => _QuickCalcAppState();
 }
 
-class _QuickCalcAppState extends State<QuickCalcApp> with WidgetsBindingObserver {
+class _QuickCalcAppState extends State<QuickCalcApp> {
   ThemeMode _themeMode = ThemeMode.light;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final homeState = context.findAncestorStateOfType<CalculatorHomeState>();
-    homeState?.didChangeAppLifecycleState(state);
-  }
 
   void _toggleTheme() => setState(() {
         _themeMode =
@@ -42,7 +24,7 @@ class _QuickCalcAppState extends State<QuickCalcApp> with WidgetsBindingObserver
       theme: ThemeData.light(useMaterial3: true),
       darkTheme: ThemeData.dark(useMaterial3: true),
       themeMode: _themeMode,
-      home: CalculatorHome(toggleTheme: _toggleTheme, themeMode: _themeMode), // REMOVED: const keyword
+      home: CalculatorHome(toggleTheme: _toggleTheme, themeMode: _themeMode),
     );
   }
 }
