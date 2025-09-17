@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:ui';
 import 'dart:math';
+import 'dart:convert'; // For base64 encoding/decoding
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:encrypt/encrypt.dart'; // For encryption
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -35,6 +37,16 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   bool lastCalculationSuccessful = false;
   bool isWatchingAd = false;
 
+  // Counters for interstitial ad triggers
+  int _calculationCounter = 0;
+  int _panelInteractionCounter = 0;
+  // Timer for PDF export cooldown
+  DateTime? _lastExportAdTime; // Tracks when the last export ad was shown
+
+  // Universal encryption passcode (ONLY YOU THE DEVELOPER KNOW THIS)
+  // !!! REPLACE THIS WITH YOUR OWN SECURE 24-CHARACTER PASSWORD !!!
+  static const String _universalPasscode = 'MySuperSecretPasscode!123';
+
   late PremiumManager premiumManager;
   late AdsManager adsManager;
 
@@ -42,12 +54,12 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     premiumManager = PremiumManager();
     adsManager = AdsManager();
     _loadHistory();
     premiumManager.loadPremium();
-    
+
     // Load all ads
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
     adsManager.loadBottomBanner(onLoaded: () => setState(() => isBottomBannerLoaded = true));
@@ -58,7 +70,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       });
     });
     adsManager.loadInterstitial();
-    
+
     // Load app open ad after a short delay to ensure everything is initialized
     Future.delayed(const Duration(seconds: 1), () {
       adsManager.loadAppOpenAd();
@@ -73,6 +85,22 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       Future.delayed(const Duration(milliseconds: 500), () {
         adsManager.showAppOpenAd();
       });
+    }
+  }
+
+  // Function to check conditions and show an interstitial ad
+  void _maybeShowInterstitial() {
+    // ADS ARE ALWAYS SHOWN. PREMIUM STATUS DOES NOT AFFECT ADS.
+    // Check if an interstitial ad is actually loaded and ready
+    if (adsManager.isInterstitialReady) {
+      adsManager.showInterstitial();
+      // Reset counters after showing an ad
+      _calculationCounter = 0;
+      _panelInteractionCounter = 0;
+    } else {
+      // If not ready, load one for next time
+      print("Interstitial not ready. Loading for next time.");
+      adsManager.loadInterstitial();
     }
   }
 
@@ -92,19 +120,19 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   Future<void> _watchRewardedAd() async {
     if (isRewardedReady && rewardedAd != null && !isWatchingAd) {
       setState(() => isWatchingAd = true);
-      
+
       await adsManager.showRewardedAd(rewardedAd!, premiumManager);
-      
+
       setState(() {
         rewardedAd = null;
         isRewardedReady = false;
       });
-      
+
       // Re-enable after 30 seconds
       Future.delayed(const Duration(seconds: 30), () {
         setState(() => isWatchingAd = false);
       });
-      
+
       adsManager.loadRewardedAd(onLoaded: (ad) {
         setState(() {
           rewardedAd = ad;
@@ -114,18 +142,111 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  void _exportPdfReport() async {
+  // Function to encrypt a file using the universal passcode
+  Future<File> _encryptPdfFile(File originalFile) async {
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Generating PDF report...')),
-      );
-      
-      await UserActivityLogger.sharePdfReport();
+      // Read the original PDF bytes
+      final originalBytes = await originalFile.readAsBytes();
+
+      // Prepare the encryption key from our passcode
+      // The key must be 32 bytes for AES-256. We pad the passcode.
+      final keyBytes = utf8.encode(_universalPasscode);
+      final paddedKey = Key(Uint8List.fromList(List<int>.filled(32, 0)));
+      for (int i = 0; i < keyBytes.length && i < 32; i++) {
+        paddedKey.bytes[i] = keyBytes[i];
+      }
+
+      // Encrypt the data
+      final encrypter = Encrypter(AES(paddedKey));
+      final iv = IV.fromLength(16); // Initialization vector
+
+      final encryptedBytes = encrypter.encryptBytes(originalBytes, iv: iv);
+
+      // Write the encrypted bytes to a new file
+      final encryptedFile = File('${originalFile.path}.encrypted');
+      await encryptedFile.writeAsBytes(encryptedBytes.bytes);
+
+      return encryptedFile;
+    } catch (e) {
+      print('Error encrypting file: $e');
+      rethrow;
+    }
+  }
+
+  // Flow with encryption and contact dialog
+  void _exportPdfReport() async {
+    // First, generate the PDF and get the file reference
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Generating PDF report...')),
+    );
+
+    final File originalPdfFile;
+    try {
+      originalPdfFile = await UserActivityLogger.generatePdfReport();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting: $e')),
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+      return;
+    }
+
+    // Now encrypt the PDF
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Encrypting report...')),
+    );
+
+    final File encryptedPdfFile;
+    try {
+      encryptedPdfFile = await _encryptPdfFile(originalPdfFile);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error encrypting PDF: $e')),
+      );
+      return;
+    }
+
+    // Show the dialog explaining the user must contact support
+    await showDialog(
+      context: context,
+      barrierDismissible: false, // User must tap OK
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Report Encrypted'),
+          content: const Text(
+              'Your activity report has been encrypted for privacy. To open it, please contact developer support for the password.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Share the ENCRYPTED PDF with the user
+    try {
+      await Share.shareXFiles([XFile(encryptedPdfFile.path)],
+          text: 'My Encrypted QuickCalc Activity Report',
+          subject: 'Encrypted QuickCalc Report - Contact Support for Password');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing PDF: $e')),
       );
     }
+
+    // Trigger interstitial after PDF export, but only once per hour
+    final now = DateTime.now();
+    if (_lastExportAdTime == null || now.difference(_lastExportAdTime!) > const Duration(hours: 1)) {
+      _lastExportAdTime = now; // Update the timestamp
+      _maybeShowInterstitial(); // Show the ad
+    }
+
+    // Clean up the temporary files after a short delay
+    Future.delayed(const Duration(seconds: 10), () {
+      originalPdfFile.delete().catchError((_) {});
+      encryptedPdfFile.delete().catchError((_) {});
+    });
   }
 
   void _clearUserActivity() async {
@@ -159,7 +280,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       try {
         double currentValue = double.tryParse(result) ?? 0;
         double newValue = 0;
-        
+
         switch (function) {
           case 'SIN':
             newValue = sin(currentValue * pi / 180);
@@ -180,7 +301,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
             newValue = log(currentValue) / log(25);
             break;
         }
-        
+
         result = newValue.toStringAsFixed(6);
         UserActivityLogger.logUserActivity('scientific', function, result);
       } catch (e) {
@@ -209,7 +330,14 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: () => setState(() => leftPanelOpen = !leftPanelOpen),
+            onPressed: () {
+              setState(() => leftPanelOpen = !leftPanelOpen);
+              // Track panel interaction
+              _panelInteractionCounter++;
+              if (_panelInteractionCounter >= 10) {
+                _maybeShowInterstitial();
+              }
+            },
             tooltip: 'History',
           ),
           IconButton(
@@ -224,7 +352,14 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           ),
           IconButton(
             icon: const Icon(Icons.star),
-            onPressed: () => setState(() => rightPanelOpen = !rightPanelOpen),
+            onPressed: () {
+              setState(() => rightPanelOpen = !rightPanelOpen);
+              // Track panel interaction
+              _panelInteractionCounter++;
+              if (_panelInteractionCounter >= 10) {
+                _maybeShowInterstitial();
+              }
+            },
             tooltip: 'Premium',
           ),
         ],
@@ -235,9 +370,9 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           Column(
             children: [
               // Top Banner Ad (ALWAYS VISIBLE - regardless of premium status)
-              if (isTopBannerLoaded) 
+              if (isTopBannerLoaded)
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.topBanner!)),
-              
+
               // Expression display
               Container(
                 alignment: Alignment.centerRight,
@@ -250,7 +385,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                   ),
                 ),
               ),
-              
+
               // Result display
               Expanded(
                 child: Center(
@@ -263,18 +398,24 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                   ),
                 ),
               ),
-              
+
               // Keypad (moved upward)
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.35,
                 child: CalculatorKeypad(
-                  onPressed: (btn) => setState(() => CalculatorLogic.handleButton(btn, this)),
+                  onPressed: (btn) => setState(() => CalculatorLogic.handleButton(btn, this, onCalculationComplete: () {
+                    // Track successful calculations
+                    _calculationCounter++;
+                    if (_calculationCounter >= 10) {
+                      _maybeShowInterstitial();
+                    }
+                  })),
                   themeMode: widget.themeMode,
                 ),
               ),
-              
+
               // Bottom Banner Ad (ALWAYS VISIBLE - regardless of premium status)
-              if (isBottomBannerLoaded) 
+              if (isBottomBannerLoaded)
                 SizedBox(height: 50, child: AdWidget(ad: adsManager.bottomBanner!)),
             ],
           ),
@@ -368,7 +509,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to Unlock Premium"),
+                        child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to Unlock Scientific Functions"), // UPDATED TEXT
                       ),
                     if (premiumManager.isPremium)
                       Padding(
@@ -390,10 +531,16 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   }
 
   Widget _buildScientificButton(String label, String function) {
+    // PREMIUM ONLY AFFECTS BUTTONS IN THIS PANEL. ADS ARE UNAFFECTED.
+    // Check premium status ONLY to determine if the button is enabled.
+    bool isEnabled = premiumManager.isPremium;
+
     return ElevatedButton(
-      onPressed: () => _handleScientificFunction(function.toUpperCase()),
+      onPressed: isEnabled // Only enable if premium is active
+          ? () => _handleScientificFunction(function.toUpperCase())
+          : null, // Disable button if not premium
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: isEnabled ? Colors.blueAccent : Colors.grey, // Visual cue: grey if disabled
         foregroundColor: Colors.white,
         padding: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

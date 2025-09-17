@@ -1,84 +1,3 @@
-cd
-cd ~/android/app
-nano gradle-wrapper.properties
-ls
-nano build.gradle.kts
-ls -a
-cd
-ls -a
-nano .gitignore
-git status
-git add . android/build.gradle.kts
-git rm --cached -r flutter
-git rm --cached -r flutterbread
-ls
-ls -a
-nano .gitignore
-git commit -m "Remove embedded Flutter SDK folders from repo"
-git push -u origin main
-git add android/build.gradle.kts
-git commit -m "Update project-level build.gradle.kts"
-git push -u origin main
-git status
-git add .gitignore
-git commit -m "Update .gitignore"
-git push
-git rm --cached flutterbread
-git push
-cd
-ls
-cd android
-ls
-nano gradle.properties
-cd
-git add android/gradle.properties
-git commit -m "Add gradle.properties with AndroidX and Jetifier enabled"
-git push origin main
-git add -f android/gradle.properties
-git commit -m "Add gradle.properties with AndroidX and Jetifier enabled"
-git push origin main
-cd ~/android
-cd app
-ls
-cd src 
-ls
-cd makn
-cd main
-ls
-cd kotlin
-cd com
-cd example
-ls
-cd eddh
-cd eddy
-ls
-cd
-ls
-cd android
-ls
-ls -a 
-nano .gitignire
-nano .gitignoee
-nano .gitignore
-cd 
-status
-git status
-git add android/.gitignore
-git commit -a
-gut commit
-gut commit 
-git commit
-# Stage the wrapper files
-git add android/gradlew android/gradlew.bat
-# Stage the modified .gitignore
-git add android/.gitignore
-# Commit the changes
-git commit -m "Add Gradle wrapper scripts and update .gitignore"
-# Push to GitHub
-git push origin main
-git add android/gradle
-git commit -m "Add Android Gradle wrapper folder"
-git push origin main
 cd android
 ls
 cd 
@@ -498,3 +417,84 @@ cd
 git add .
 git commit -m"uodage"
 git push origin main
+mkdir
+mkdir linux
+ls
+mkdir pc
+ls
+cd pc
+pkg update && pkg upgrade -y
+whoami
+id
+cd
+whoami
+id
+useradd -m -s /bin/bash eddy
+passwd eddy
+vncpasswd
+sudo apt install dbus-x11 x11-xserver-utils xfce4 xfce4-goodies -y
+apt install dbus-x11 x11-xserver-utils xfce4 xfce4-goodies -y
+cat > ~/.vnc/xstartup <<'EOF'
+#!/bin/sh
+xrdb $HOME/.Xresources
+startxfce4 &
+EOF
+
+chmod +x ~/.vnc/xstartup
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+proot-distro login ubuntu
+xrdb $HOME/.Xresources
+startxfce4 &
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartup
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+touch ~/.Xresources
+nano ~/.vnc/xstartup
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+touch ~/.Xresources
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+nano ~/.vnc/xstartupo
+nano ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+vncserver -kill :1
+vncserver :1 -geometry 1280x720 -depth 24
+dpkg -l | grep xfce4
+echo -e '#!/bin/bash\nxrdb $HOME/.Xresources\nstartxfce4 &' > ~/.vnc/xstartup && chmod +x ~/.vnc/xstartup && vncserver -kill :1 2>/dev/null; vncserver :1 -geometry 1280x720 -depth 24
+sudo apt update && sudo apt install xfce4 xfce4-goodies -y
+1# Switch back to the original ubuntu user
+proot-distro login ubuntu
+# Reset eddy's password
+sudo passwd eddy
+exit
+sudo apt update && sudo apt install xfce4 xfce4-goodies -y
+exit
+sudo whoami
+exit
+sudo whoami
+exit
+sudo whoami
+exit
