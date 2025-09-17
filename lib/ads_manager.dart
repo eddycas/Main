@@ -12,6 +12,9 @@ class AdsManager {
   AppOpenAd? appOpenAd;
   bool isAppOpenAdLoaded = false;
 
+  // GETTER: Check if an interstitial ad is loaded and ready to show
+  bool get isInterstitialReady => interstitialAd != null;
+
   // FIXED: Updated App Open Ad loading with current API
   void loadAppOpenAd() {
     AppOpenAd.load(
@@ -22,7 +25,7 @@ class AdsManager {
           appOpenAd = ad;
           isAppOpenAdLoaded = true;
           print('App Open Ad loaded successfully');
-          
+
           // Set full screen content callback
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
@@ -141,7 +144,7 @@ class AdsManager {
         ad.dispose();
       },
     );
-    
+
     ad.show(onUserEarnedReward: (_, __) {
       UserActivityLogger.logUserActivity('ad_click', 'rewarded', 'premium_1hour');
       DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
@@ -158,16 +161,18 @@ class AdsManager {
           interstitialAd = ad;
           UserActivityLogger.logUserActivity('ad_impression', 'interstitial', '');
           DeveloperAnalytics.trackAdEvent('impression', 'interstitial', 'interstitial_ad');
-          
+
           interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
-              loadInterstitial();
+              interstitialAd = null; // CORRECTED: Set to null HERE, after disposal
+              loadInterstitial(); // Load a new interstitial ad
             },
             onAdFailedToShowFullScreenContent: (ad, err) {
               print('Failed to show interstitial ad: $err');
               ad.dispose();
-              loadInterstitial();
+              interstitialAd = null; // CORRECTED: Set to null HERE, after disposal
+              loadInterstitial(); // Load a new interstitial ad
             },
           );
         },
@@ -179,12 +184,16 @@ class AdsManager {
     );
   }
 
+  // FIXED: Removed the line that set interstitialAd = null. The disposal is handled in the callback.
   void showInterstitial() {
     if (interstitialAd != null) {
       interstitialAd!.show();
       UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
       DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
-      interstitialAd = null;
+      // CORRECTION: DO NOT set interstitialAd = null here.
+      // It will be set to null in the fullScreenContentCallback after the ad is dismissed.
+    } else {
+      print('Tried to show interstitial ad, but it was not loaded.');
     }
   }
 
