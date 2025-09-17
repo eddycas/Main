@@ -7,7 +7,6 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'premium_manager.dart';
 import 'ads_manager.dart';
@@ -83,7 +82,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 500), () {
         adsManager.showAppOpenAd();
-      });
+      );
     }
   }
 
@@ -135,7 +134,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  // FIXED: Create password-protected PDF with correct API
+  // FIXED: Create password-protected PDF with correct encryption API
   Future<File> _createPasswordProtectedPdf() async {
     try {
       // Get user activities for the report
@@ -180,23 +179,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         }
       }
 
-      // Create PDF with password protection - FIXED API
-      final pdf = pw.Document(
-        // CORRECT WAY: Set encryption during document creation
-        theme: pw.ThemeData.withFont(
-          base: await PdfGoogleFonts.robotoRegular(),
-        ),
-        // Set password protection here
-        encryption: pw.Encryption(
-          userPassword: _pdfPassword,
-          ownerPassword: _pdfPassword,
-          permissions: pw.Permissions(
-            printing: pw.Printing.allow, // Allow printing
-            copying: pw.Copying.allow, // Allow copying
-            modifying: pw.Modifying.allow, // Allow modifying
-          ),
-        ),
-      );
+      // Create PDF
+      final pdf = pw.Document();
 
       pdf.addPage(
         pw.Page(
@@ -205,6 +189,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Header(level: 0, text: 'QuickCalc Activity Report'),
+                pw.SizedBox(height: 10),
+                pw.Text('Generated on: ${DateTime.now().toString()}'),
                 pw.SizedBox(height: 20),
                 for (final category in organizedActivities.entries)
                   if (category.value.isNotEmpty) ...[
@@ -231,10 +217,23 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         ),
       );
 
-      // Save to temporary file
+      // CORRECT ENCRYPTION API: Encrypt when saving
+      final encryptedData = pdf.saveSync(
+        encryption: pw.Encryption(
+          userPassword: _pdfPassword,
+          ownerPassword: _pdfPassword,
+          permissions: const pw.Permissions(
+            printing: pw.Permission.allow,
+            copying: pw.Permission.allow,
+            modifying: pw.Permission.allow,
+          ),
+        ),
+      );
+
+      // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      await file.writeAsBytes(await pdf.save());
+      await file.writeAsBytes(encryptedData);
 
       return file;
     } catch (e) {
@@ -536,8 +535,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                     Expanded(
                       child: GridView.count(
                         crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
+                        mainAxisSpensing: 12,
+                        crossAxisSpensing: 12,
                         children: [
                           _buildScientificButton('SIN', 'sin'),
                           _buildScientificButton('COS', 'cos'),
