@@ -16,3 +16,4 @@ if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
 export PATH="$HOME/flutter/bin:$PATH"
+export PATH="$PATH:$HOME/myremoteapp/bin"

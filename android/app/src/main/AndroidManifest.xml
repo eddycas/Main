@@ -5,6 +5,7 @@
     <!-- ========================= -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.TRANSMIT_IR"/>
 
     <!-- ========================= -->
     <!-- Application -->
@@ -16,15 +17,10 @@
         android:allowBackup="true"
         android:theme="@style/LaunchTheme">
 
-        <!-- Firebase & Flutter embedding meta-data -->
+        <!-- Flutter embedding theme -->
         <meta-data
             android:name="io.flutter.embedding.android.NormalTheme"
             android:resource="@style/NormalTheme"/>
-
-        <!-- AdMob App ID (replace with your real ID) -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
 
         <!-- Main Activity -->
         <activity
@@ -50,7 +46,7 @@
     </application>
 
     <!-- ========================= -->
-    <!-- Queries for text processing (required by some plugins) -->
+    <!-- Queries (needed by some plugins) -->
     <!-- ========================= -->
     <queries>
         <intent>
