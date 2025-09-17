@@ -6,8 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:printing/printing.dart'; // For PDF password protection
-import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart'; // ADDED: For getTemporaryDirectory
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -134,32 +133,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           isRewardedReady = true;
         });
       });
-    }
-  }
-
-  // NEW: Simple PDF password protection without heavy encryption
-  Future<File> _createPasswordProtectedPdf() async {
-    try {
-      // Generate the PDF content first
-      final pdf = pw.Document();
-      // ... (your existing PDF generation code from UserActivityLogger) ...
-      
-      // For simplicity, let's assume we're using the existing generatePdfReport
-      // but we'll add password protection when saving
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      
-      // Save with password protection
-      final pdfData = await pdf.save();
-      // Note: The printing package may not directly support password protection in save()
-      // We'll use a different approach - see below
-      
-      await file.writeAsBytes(pdfData);
-      return file;
-      
-    } catch (e) {
-      print('Error creating PDF: $e');
-      rethrow;
     }
   }
 
@@ -346,7 +319,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               }
             },
             tooltip: 'Premium',
-          ),
+          },
         ],
       ),
       body: Stack(

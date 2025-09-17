@@ -12,26 +12,15 @@ class AdsManager {
   AppOpenAd? appOpenAd;
   bool isAppOpenAdLoaded = false;
 
-  // FIX: Make AdsManager a singleton (global instance)
-  static final AdsManager _instance = AdsManager._internal();
-  factory AdsManager() => _instance;
-  AdsManager._internal(); // Private constructor
-
   // GETTER: Check if an interstitial ad is loaded and ready to show
   bool get isInterstitialReady => interstitialAd != null;
 
-  // FIX: Track if an app open ad is showing to prevent multiple ads
-  bool _isShowingAppOpen = false;
-
-  // FIX: Updated App Open Ad loading
+  // FIXED: Updated App Open Ad loading with current API
   void loadAppOpenAd() {
-    // Don't load if already loaded or currently showing
-    if (isAppOpenAdLoaded || _isShowingAppOpen) return;
-
     AppOpenAd.load(
       adUnitId: "ca-app-pub-3940256099942544/3419835294", // Test app open ad ID
       request: const AdRequest(),
-      orientation: AppOpenAd.orientationPortrait,
+      // REMOVED: orientation parameter (no longer supported)
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
           appOpenAd = ad;
@@ -41,14 +30,12 @@ class AdsManager {
           // Set full screen content callback
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
-              _isShowingAppOpen = false;
               ad.dispose();
               isAppOpenAdLoaded = false;
               loadAppOpenAd(); // Load next app open ad
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               print('Failed to show app open ad: $error');
-              _isShowingAppOpen = false;
               ad.dispose();
               isAppOpenAdLoaded = false;
               loadAppOpenAd(); // Load next app open ad
@@ -65,23 +52,19 @@ class AdsManager {
     );
   }
 
-  // FIX: Improved Show App Open Ad method
+  // Show App Open Ad
   Future<void> showAppOpenAd() async {
-    // Prevent showing if already showing, not loaded, or premium
-    if (_isShowingAppOpen || !isAppOpenAdLoaded || appOpenAd == null) {
-      print('App Open Ad not ready to show.');
-      return;
-    }
-
-    try {
-      _isShowingAppOpen = true;
-      appOpenAd!.show();
-      // Track app open ad impression
-      DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
-      UserActivityLogger.logUserActivity('ad_impression', 'app_open', '');
-    } catch (e) {
-      _isShowingAppOpen = false;
-      print('Error showing app open ad: $e');
+    if (isAppOpenAdLoaded && appOpenAd != null) {
+      try {
+        appOpenAd!.show();
+        // Track app open ad impression
+        DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
+        UserActivityLogger.logUserActivity('ad_impression', 'app_open', '');
+      } catch (e) {
+        print('Error showing app open ad: $e');
+      }
+    } else {
+      print('App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
     }
   }
 
@@ -125,7 +108,7 @@ class AdsManager {
         },
         onAdClicked: (ad) {
           UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', '');
-          DeveloperAnalytics.trackAdEvent('click', 'banner', 'bottom_banner');
+          DeveloperAnalytics.trackAdEvent('click', 'banner', 'top_banner');
         },
       ),
     )..load();
@@ -183,14 +166,14 @@ class AdsManager {
           interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
-              interstitialAd = null;
-              loadInterstitial();
+              interstitialAd = null; // CORRECTED: Set to null HERE, after disposal
+              loadInterstitial(); // Load a new interstitial ad
             },
             onAdFailedToShowFullScreenContent: (ad, err) {
               print('Failed to show interstitial ad: $err');
               ad.dispose();
-              interstitialAd = null;
-              loadInterstitial();
+              interstitialAd = null; // CORRECTED: Set to null HERE, after disposal
+              loadInterstitial(); // Load a new interstitial ad
             },
           );
         },
@@ -202,11 +185,14 @@ class AdsManager {
     );
   }
 
+  // FIXED: Removed the line that set interstitialAd = null. The disposal is handled in the callback.
   void showInterstitial() {
     if (interstitialAd != null) {
       interstitialAd!.show();
       UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
       DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
+      // CORRECTION: DO NOT set interstitialAd = null here.
+      // It will be set to null in the fullScreenContentCallback after the ad is dismissed.
     } else {
       print('Tried to show interstitial ad, but it was not loaded.');
     }
