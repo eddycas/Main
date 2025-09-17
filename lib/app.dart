@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'ads_manager.dart';
 import 'home.dart';
 
-class App extends StatefulWidget {
-  const App({super.key});
+class QuickCalcApp extends StatefulWidget {
+  const QuickCalcApp({super.key});
 
   @override
-  State<App> createState() => _AppState();
+  State<QuickCalcApp> createState() => _QuickCalcAppState();
 }
 
-class _AppState extends State<App> with WidgetsBindingObserver {
+class _QuickCalcAppState extends State<QuickCalcApp> with WidgetsBindingObserver {
+  ThemeMode _themeMode = ThemeMode.light;
+
   @override
   void initState() {
     super.initState();
@@ -20,35 +20,29 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    AdsManager.dispose(); // Dispose all ads when the app is closed
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    
-    // Show app open ad when the app returns to the foreground
-    if (state == AppLifecycleState.resumed) {
-      AdsManager.showAppOpenAd();
-    }
+    final homeState = context.findAncestorStateOfType<CalculatorHomeState>();
+    homeState?.didChangeAppLifecycleState(state);
   }
+
+  void _toggleTheme() => setState(() {
+        _themeMode =
+            _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      });
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    
     return MaterialApp(
-      title: 'Calculator',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const Home(),
+      title: 'QuickCalc',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
+      themeMode: _themeMode,
+      home: CalculatorHome(toggleTheme: _toggleTheme, themeMode: _themeMode), // REMOVED: const keyword
     );
   }
 }

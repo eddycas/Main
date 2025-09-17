@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:math_expressions/math_expressions.dart';
+import 'package:flutter/foundation.dart'; // ADDED: For VoidCallback
 import 'home.dart';
 import 'user_activity_logger.dart';
 import 'developer_analytics.dart';
@@ -7,7 +8,6 @@ import 'developer_analytics.dart';
 class CalculatorLogic {
   static int _calculationCount = 0;
 
-  // UPDATED: Added onCalculationComplete callback parameter
   static void handleButton(String btn, CalculatorHomeState state, {VoidCallback? onCalculationComplete}) {
     if (btn == '=') {
       try {
@@ -40,7 +40,6 @@ class CalculatorLogic {
         state.lastCalculationSuccessful = true;
         state.saveHistory();
 
-        // NEW: Notify the parent that a calculation was completed
         if (onCalculationComplete != null) {
           onCalculationComplete();
         }
@@ -76,7 +75,7 @@ class CalculatorLogic {
       state.result = state.expression;
     }
   }
-  // ... (Rest of the file remains exactly the same, no changes below this point)
+
   static String _getOperationType(String expression) {
     if (expression.contains('+')) return 'addition';
     if (expression.contains('-')) return 'subtraction';
