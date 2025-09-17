@@ -7,7 +7,8 @@ import 'developer_analytics.dart';
 class CalculatorLogic {
   static int _calculationCount = 0;
 
-  static void handleButton(String btn, CalculatorHomeState state) {
+  // UPDATED: Added onCalculationComplete callback parameter
+  static void handleButton(String btn, CalculatorHomeState state, {VoidCallback? onCalculationComplete}) {
     if (btn == '=') {
       try {
         if (state.expression.isEmpty) return;
@@ -24,11 +25,11 @@ class CalculatorLogic {
         }
 
         UserActivityLogger.logUserActivity(
-          'calculation', 
-          state.expression, 
+          'calculation',
+          state.expression,
           state.result
         );
-        
+
         final operation = _getOperationType(state.expression);
         final digitCount = _getDigitCount(state.expression);
         DeveloperAnalytics.trackCalculationStats(operation, digitCount);
@@ -38,6 +39,11 @@ class CalculatorLogic {
         state.expression = "";
         state.lastCalculationSuccessful = true;
         state.saveHistory();
+
+        // NEW: Notify the parent that a calculation was completed
+        if (onCalculationComplete != null) {
+          onCalculationComplete();
+        }
       } catch (_) {
         state.result = "Error";
         state.lastCalculationSuccessful = false;
@@ -70,7 +76,7 @@ class CalculatorLogic {
       state.result = state.expression;
     }
   }
-
+  // ... (Rest of the file remains exactly the same, no changes below this point)
   static String _getOperationType(String expression) {
     if (expression.contains('+')) return 'addition';
     if (expression.contains('-')) return 'subtraction';

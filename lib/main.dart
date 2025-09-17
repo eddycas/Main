@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'ads_manager.dart';
 import 'app.dart';
-import 'ads_manager.dart'; // ADD THIS IMPORT
+import 'premium_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await MobileAds.instance.initialize();
   
-  // Load first app open ad immediately
-  final adsManager = AdsManager();
-  adsManager.loadAppOpenAd();
+  // Initialize Premium Manager (assuming it has an initialize method)
+  await PremiumManager.initialize();
   
-  runApp(const QuickCalcApp());
+  // Initialize Ads ONLY if user is not premium
+  if (!PremiumManager.isUserPremium()) {
+    await AdsManager.initialize();
+  }
+  
+  runApp(const App());
 }
+
+// You can also use a StatefulWidget for the main app to call dispose, but it's
+// more common to handle this in the root widget (App). We'll do it in app.dart.

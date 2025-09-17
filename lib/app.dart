@@ -1,49 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'ads_manager.dart';
 import 'home.dart';
 
-class QuickCalcApp extends StatefulWidget {
-  const QuickCalcApp({super.key});
+class App extends StatefulWidget {
+  const App({super.key});
 
   @override
-  State<QuickCalcApp> createState() => _QuickCalcAppState();
+  State<App> createState() => _AppState();
 }
 
-class _QuickCalcAppState extends State<QuickCalcApp> with WidgetsBindingObserver {
-  ThemeMode _themeMode = ThemeMode.light;
-
+class _AppState extends State<App> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // ADD THIS
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // ADD THIS
+    WidgetsBinding.instance.removeObserver(this);
+    AdsManager.dispose(); // Dispose all ads when the app is closed
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Forward lifecycle events to home screen
-    final homeState = context.findAncestorStateOfType<CalculatorHomeState>();
-    homeState?.didChangeAppLifecycleState(state);
+    super.didChangeAppLifecycleState(state);
+    
+    // Show app open ad when the app returns to the foreground
+    if (state == AppLifecycleState.resumed) {
+      AdsManager.showAppOpenAd();
+    }
   }
-
-  void _toggleTheme() => setState(() {
-        _themeMode =
-            _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-      });
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    
     return MaterialApp(
-      title: 'QuickCalc',
+      title: 'Calculator',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const Home(),
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(useMaterial3: true),
-      darkTheme: ThemeData.dark(useMaterial3: true),
-      themeMode: _themeMode,
-      home: CalculatorHome(toggleTheme: _toggleTheme, themeMode: _themeMode),
     );
   }
 }
