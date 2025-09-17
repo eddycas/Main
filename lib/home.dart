@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:ui';
 import 'dart:math';
 import 'dart:convert';
-import 'dart:io'; // ADDED: For File class
-import 'dart:typed_data'; // ADDED: For Uint8List
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:encrypt/encrypt.dart' as encrypt; // ADDED: Prefix import
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:crypto/crypto.dart'; // For sha256 hashing
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -45,8 +46,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   // Timer for PDF export cooldown
   DateTime? _lastExportAdTime;
 
-  // Universal encryption passcode
-  static const String _universalPasscode = 'MySuperSecretPasscode!123';
+  // Universal encryption passcode - YOUR CODE HERE
+  static const String _universalPasscode = 'b"&38+:)fas4#0@ghc62@7/#';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -136,19 +137,24 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
   Future<File> _encryptPdfFile(File originalFile) async {
     try {
+      // Read the original PDF bytes
       final originalBytes = await originalFile.readAsBytes();
-      final keyBytes = utf8.encode(_universalPasscode);
-      final paddedKey = encrypt.Key(Uint8List.fromList(List<int>.filled(32, 0)));
-      for (int i = 0; i < keyBytes.length && i < 32; i++) {
-        paddedKey.bytes[i] = keyBytes[i];
-      }
 
-      final encrypter = encrypt.Encrypter(encrypt.AES(paddedKey));
+      // FIXED: Properly derive a 32-byte key from the passcode using SHA-256
+      final keyBytes = sha256.convert(utf8.encode(_universalPasscode)).bytes;
+      final key = encrypt.Key(Uint8List.fromList(keyBytes));
+
+      // Encrypt the data
+      final encrypter = encrypt.Encrypter(encrypt.AES(key));
+      // Use a fixed IV for simplicity
       final iv = encrypt.IV.fromLength(16);
+
       final encryptedBytes = encrypter.encryptBytes(originalBytes, iv: iv);
 
+      // Write the encrypted bytes to a new file
       final encryptedFile = File('${originalFile.path}.encrypted');
       await encryptedFile.writeAsBytes(encryptedBytes.bytes);
+
       return encryptedFile;
     } catch (e) {
       print('Error encrypting file: $e');
