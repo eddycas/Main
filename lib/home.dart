@@ -203,20 +203,22 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   }
 
   Uint8List _generateAesKey(String password) {
-    // Convert password to bytes and ensure 32 bytes for AES-256
+    // Convert password to bytes
     var keyBytes = utf8.encode(password);
     
-    // For AES-256, we need exactly 32 bytes
-    if (keyBytes.length < 32) {
-      // Pad with zeros if shorter
-      keyBytes = List<int>.from(keyBytes);
-      keyBytes.addAll(List.filled(32 - keyBytes.length, 0));
-    } else if (keyBytes.length > 32) {
-      // Truncate if longer
-      keyBytes = keyBytes.sublist(0, 32);
+    // Create a Uint8List with 32 bytes for AES-256
+    final result = Uint8List(32);
+    
+    // Fill the result with password bytes, padding with zeros if needed
+    for (int i = 0; i < 32; i++) {
+      if (i < keyBytes.length) {
+        result[i] = keyBytes[i];
+      } else {
+        result[i] = 0; // Pad with zeros
+      }
     }
     
-    return Uint8List.fromList(keyBytes);
+    return result;
   }
 
   Future<File> _createPasswordProtectedPdf() async {
