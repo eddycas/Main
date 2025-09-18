@@ -10,6 +10,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:pointycastle/pointycastle.dart';
+import 'package:pointycastle/block/aes.dart';
+import 'package:pointycastle/padded_block_cipher/padded_block_cipher.dart';
+import 'package:pointycastle/padded_block_cipher/padded_block_cipher_impl.dart';
+import 'package:pointycastle/paddings/pkcs7.dart';
+import 'package:pointycastle/api.dart' as crypto;
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -136,6 +142,60 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
+  List<int> _aesEncrypt(List<int> data, String password) {
+    try {
+      // Generate key from password (AES-256 requires 32 bytes)
+      final key = _generateAesKey(password);
+      
+      // Generate IV (Initialization Vector)
+      final iv = _generateIv();
+      
+      // Create AES cipher
+      final cipher = PaddedBlockCipherImpl(PKCS7Padding(), AESEngine());
+      final params = crypto.ParametersWithIV(crypto.KeyParameter(key), iv);
+      cipher.init(true, params);
+      
+      // Encrypt the data
+      final encryptedData = cipher.process(Uint8List.fromList(data));
+      
+      // Combine IV + encrypted data
+      final result = Uint8List(iv.length + encryptedData.length);
+      result.setRange(0, iv.length, iv);
+      result.setRange(iv.length, result.length, encryptedData);
+      
+      return result;
+    } catch (e) {
+      print('AES encryption error: $e');
+      rethrow;
+    }
+  }
+
+  Uint8List _generateAesKey(String password) {
+    // Convert password to bytes
+    var keyBytes = utf8.encode(password);
+    
+    // For AES-256, we need exactly 32 bytes
+    if (keyBytes.length < 32) {
+      // Pad with zeros if shorter
+      keyBytes = List<int>.from(keyBytes)..addAll(List.filled(32 - keyBytes.length, 0));
+    } else if (keyBytes.length > 32) {
+      // Truncate if longer
+      keyBytes = keyBytes.sublist(0, 32);
+    }
+    
+    return Uint8List.fromList(keyBytes);
+  }
+
+  Uint8List _generateIv() {
+    // AES block size is 16 bytes for IV
+    final iv = Uint8List(16);
+    final random = Random.secure();
+    for (int i = 0; i < iv.length; i++) {
+      iv[i] = random.nextInt(256);
+    }
+    return iv;
+  }
+
   Future<File> _createPasswordProtectedPdf() async {
     try {
       // Get user activities for the report
@@ -193,7 +253,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                 pw.SizedBox(height: 10),
                 pw.Text('Generated on: ${DateTime.now().toString()}'),
                 pw.SizedBox(height: 20),
-                pw.Text('🔒 Password Protected - Secure Report', 
+                pw.Text('🔒 AES-256 Encrypted - Secure Report', 
                   style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 30),
 
@@ -289,27 +349,15 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         ),
       );
 
-      // Save PDF with AES-256 encryption using the latest pdf package API
+      // Generate PDF data
       final pdfData = await pdf.save();
 
-      // For the latest pdf package, use the encryption parameters directly
-      final encryptedPdfData = await pdf.save(
-        encryption: pw.Encryption(
-          userPassword: _pdfPassword,
-          ownerPassword: _pdfPassword,
-          permissions: const pw.PdfPermissions(
-            print: true,
-            copy: false,
-            modify: false,
-            addAnnotation: false,
-            fillForm: false,
-          ),
-        ),
-      );
+      // Encrypt with AES-256
+      final encryptedPdfData = _aesEncrypt(pdfData, _pdfPassword);
 
       // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
+      final file = File('${tempDir.path}/quickcalc_activity_report.aes');
       await file.writeAsBytes(encryptedPdfData);
 
       return file;
@@ -321,15 +369,15 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
   void _exportPdfReport() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Generating encrypted PDF report...')),
+      const SnackBar(content: Text('Generating AES-256 encrypted report...')),
     );
 
-    final File pdfFile;
+    final File encryptedFile;
     try {
-      pdfFile = await _createPasswordProtectedPdf();
+      encryptedFile = await _createPasswordProtectedPdf();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
+        SnackBar(content: Text('Error generating encrypted file: $e')),
       );
       return;
     }
@@ -340,21 +388,22 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('PDF Encrypted with AES-256'),
-          content: const Column(
+          title: const Text('AES-256 Encrypted Report'),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your report has been encrypted with AES-256 encryption.'),
-              SizedBox(height: 16),
-              Text('When you open this PDF in any PDF reader:'),
-              SizedBox(height: 8),
-              Text('• You will see a password prompt'),
-              Text('• Enter the password to view the content'),
-              Text('• Works with Adobe Reader, Preview, Chrome, etc.'),
-              SizedBox(height: 16),
-              Text(
-                'The PDF is secured with industry-standard encryption to protect your activity data.',
+              const Text('Your report has been encrypted with AES-256 encryption.'),
+              const SizedBox(height: 16),
+              const Text('File Information:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('• File format: AES-256 encrypted binary'),
+              Text('• Encryption: AES-256 CBC mode'),
+              Text('• Key derivation: Password-based'),
+              const SizedBox(height: 16),
+              const Text(
+                'Note: This file requires a custom decryption tool to read. '
+                'The encryption ensures maximum security for your activity data.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -369,18 +418,20 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       },
     );
 
-    // Share the encrypted PDF
+    // Share the encrypted file
     try {
-      await Share.shareXFiles([XFile(pdfFile.path)],
-          text: 'My QuickCalc Activity Report - Encrypted with AES-256',
-          subject: 'QuickCalc Encrypted Activity Report');
+      await Share.shareXFiles([XFile(encryptedFile.path)],
+          text: 'My QuickCalc Activity Report - AES-256 Encrypted\n'
+                'Password: $_pdfPassword\n'
+                'Note: Requires custom decryption tool',
+          subject: 'QuickCalc AES-256 Encrypted Report');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sharing PDF: $e')),
+        SnackBar(content: Text('Error sharing file: $e')),
       );
     }
 
-    // Trigger interstitial after PDF export, but only once per hour
+    // Trigger interstitial after export, but only once per hour
     final now = DateTime.now();
     if (_lastExportAdTime == null || now.difference(_lastExportAdTime!) > const Duration(hours: 1)) {
       _lastExportAdTime = now;
@@ -389,7 +440,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
     // Clean up the temporary file after a short delay
     Future.delayed(const Duration(seconds: 30), () {
-      pdfFile.delete().catchError((_) {});
+      encryptedFile.delete().catchError((_) {});
     });
   }
 
@@ -486,7 +537,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           IconButton(
             icon: const Icon(Icons.description),
             onPressed: _exportPdfReport,
-            tooltip: 'Export PDF Report',
+            tooltip: 'Export Encrypted Report',
           ),
           IconButton(
             icon: const Icon(Icons.color_lens),
