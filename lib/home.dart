@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:dart_pdf_password_protect/dart_pdf_password_protect.dart';
+import 'package:pdf_password_protect/pdf_password_protect.dart';
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
