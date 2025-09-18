@@ -7,8 +7,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:pdf_password_protect/pdf_password_protect.dart';
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -46,7 +46,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   DateTime? _lastExportAdTime;
 
   // PDF password
-  static const String _pdfPassword = 'QuickCalcSecure123!';
+  static const String _pdfPassword = 'gush5+$:)#6gsj5#8+';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -142,14 +142,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       final savedActivities = prefs.getStringList('user_activities') ?? [];
       final allActivities = [...savedActivities];
 
-      // Organize activities by type
-      final Map<String, List<Map<String, String>>> organizedActivities = {
-        'Ads Shown': [],
-        'Ads Clicked': [],
-        'Ads Watched': [],
-        'Calculations': [],
-        'Premium Activities': [],
-      };
+      // Organize activities into sections
+      final List<Map<String, String>> calculationHistory = [];
+      final List<Map<String, String>> adsClicked = [];
+      final List<Map<String, String>> adsWatched = [];
+      final List<Map<String, String>> otherActivities = [];
 
       for (final activity in allActivities) {
         final parts = activity.split('|');
@@ -160,24 +157,26 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           final value = parts[3];
 
           final activityMap = {
-            'timestamp': DateTime.parse(timestamp).toString(),
+            'timestamp': timestamp,
+            'type': type,
             'details': details,
             'value': value
           };
 
-          if (type == 'ad_impression' || type == 'ad_loaded') {
-            organizedActivities['Ads Shown']!.add(activityMap);
+          if (type == 'calculation' || type == 'scientific') {
+            calculationHistory.add(activityMap);
           } else if (type == 'ad_click') {
-            organizedActivities['Ads Clicked']!.add(activityMap);
+            adsClicked.add(activityMap);
           } else if (type == 'ad_watched') {
-            organizedActivities['Ads Watched']!.add(activityMap);
-          } else if (type == 'calculation' || type == 'scientific') {
-            organizedActivities['Calculations']!.add(activityMap);
-          } else if (type.contains('premium') || value.contains('premium')) {
-            organizedActivities['Premium Activities']!.add(activityMap);
+            adsWatched.add(activityMap);
+          } else {
+            otherActivities.add(activityMap);
           }
         }
       }
+
+      // Get last ~30 calculations (most recent first)
+      final recentCalculations = calculationHistory.reversed.take(30).toList();
 
       // Create PDF
       final pdf = pw.Document();
@@ -188,60 +187,135 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
+                // Header
                 pw.Header(level: 0, text: 'QuickCalc Activity Report'),
                 pw.SizedBox(height: 10),
                 pw.Text('Generated on: ${DateTime.now().toString()}'),
                 pw.SizedBox(height: 20),
-                for (final category in organizedActivities.entries)
-                  if (category.value.isNotEmpty) ...[
-                    pw.Header(level: 1, text: category.key),
-                    pw.ListView.builder(
-                      itemCount: category.value.length,
-                      itemBuilder: (context, index) {
-                        final activity = category.value[index];
-                        final time = DateTime.parse(activity['timestamp']!);
-                        return pw.Padding(
-                          padding: const pw.EdgeInsets.symmetric(vertical: 4),
-                          child: pw.Text(
-                            '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']} ${activity['value']!.isNotEmpty ? '(${activity['value']})' : ''}',
-                            style: const pw.TextStyle(fontSize: 12),
-                          ),
-                        );
-                      },
-                    ),
-                    pw.SizedBox(height: 16),
-                  ]
+                pw.Text('🔒 Password Protected - Secure Report', 
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 30),
+
+                // Section 1: Calculation History
+                pw.Header(level: 1, text: '1. Calculation History (Last 30)'),
+                pw.SizedBox(height: 10),
+                if (recentCalculations.isEmpty)
+                  pw.Text('No calculation history available.', style: const pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+                if (recentCalculations.isNotEmpty)
+                  pw.ListView.builder(
+                    itemCount: recentCalculations.length,
+                    itemBuilder: (context, index) {
+                      final activity = recentCalculations[index];
+                      final time = DateTime.parse(activity['timestamp']!);
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                        child: pw.Text(
+                          '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']} ${activity['value']!.isNotEmpty ? '= ${activity['value']}' : ''}',
+                          style: const pw.TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                pw.SizedBox(height: 20),
+
+                // Section 2: Ads Clicked
+                pw.Header(level: 1, text: '2. Ads Clicked'),
+                pw.SizedBox(height: 10),
+                if (adsClicked.isEmpty)
+                  pw.Text('No ads clicked.', style: const pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+                if (adsClicked.isNotEmpty)
+                  pw.ListView.builder(
+                    itemCount: adsClicked.length,
+                    itemBuilder: (context, index) {
+                      final activity = adsClicked[index];
+                      final time = DateTime.parse(activity['timestamp']!);
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                        child: pw.Text(
+                          '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']}',
+                          style: const pw.TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                pw.SizedBox(height: 20),
+
+                // Section 3: Ads Watched
+                pw.Header(level: 1, text: '3. Ads Watched'),
+                pw.SizedBox(height: 10),
+                if (adsWatched.isEmpty)
+                  pw.Text('No ads watched.', style: const pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+                if (adsWatched.isNotEmpty)
+                  pw.ListView.builder(
+                    itemCount: adsWatched.length,
+                    itemBuilder: (context, index) {
+                      final activity = adsWatched[index];
+                      final time = DateTime.parse(activity['timestamp']!);
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                        child: pw.Text(
+                          '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['details']}',
+                          style: const pw.TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                pw.SizedBox(height: 20),
+
+                // Section 4: Other Activities
+                pw.Header(level: 1, text: '4. Other Activities'),
+                pw.SizedBox(height: 10),
+                if (otherActivities.isEmpty)
+                  pw.Text('No other activities recorded.', style: const pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+                if (otherActivities.isNotEmpty)
+                  pw.ListView.builder(
+                    itemCount: otherActivities.length,
+                    itemBuilder: (context, index) {
+                      final activity = otherActivities[index];
+                      final time = DateTime.parse(activity['timestamp']!);
+                      return pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                        child: pw.Text(
+                          '• ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} - ${activity['type']}: ${activity['details']} ${activity['value']!.isNotEmpty ? '(${activity['value']})' : ''}',
+                          style: const pw.TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
               ],
             );
           },
         ),
       );
 
-      // Generate PDF bytes
-      final pdfData = await pdf.save();
-
-      // Encrypt the PDF using dart_pdf_password_protect
-      final encryptedPdfData = await PDFPasswordProtect.encryptPDF(
-        pdfBytes: pdfData,
+      // Save PDF with simple password protection
+      final pdfData = await pdf.save(
         password: _pdfPassword,
         userPassword: _pdfPassword,
+        permissions: const pw.PdfPermissions(
+          copy: true,
+          modify: false,
+          print: true,
+          add: false,
+        ),
+        encrypt: true,
       );
 
       // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      await file.writeAsBytes(encryptedPdfData);
+      await file.writeAsBytes(pdfData);
 
       return file;
     } catch (e) {
-      print('Error creating encrypted PDF: $e');
+      print('Error creating password-protected PDF: $e');
       rethrow;
     }
   }
 
   void _exportPdfReport() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Generating encrypted PDF report...')),
+      const SnackBar(content: Text('Generating password-protected PDF report...')),
     );
 
     final File pdfFile;
@@ -254,30 +328,27 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       return;
     }
 
-    // Show the dialog with the password
+    // Show the dialog explaining the password protection
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('PDF Password Protected'),
-          content: Column(
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Your report has been encrypted with a password.'),
-              const SizedBox(height: 16),
-              const Text('Password:'),
-              const SizedBox(height: 8),
-              SelectableText(
-                _pdfPassword,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
-              ),
-              const SizedBox(height: 16),
-              const Text('You will need this password to open the PDF file in any PDF reader.'),
-              const SizedBox(height: 8),
-              const Text(
-                'Note: The PDF is encrypted with AES-256 and will prompt for the password when opened in any standard PDF viewer.',
+              Text('Your report has been protected with a password.'),
+              SizedBox(height: 16),
+              Text('When you open this PDF in any PDF reader:'),
+              SizedBox(height: 8),
+              Text('• You will see a password prompt'),
+              Text('• Enter the password to view the content'),
+              Text('• Works with Adobe Reader, Preview, Chrome, etc.'),
+              SizedBox(height: 16),
+              Text(
+                'The password ensures only authorized users can access your activity data.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -292,11 +363,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       },
     );
 
-    // Share the encrypted PDF with the user
+    // Share the password-protected PDF
     try {
       await Share.shareXFiles([XFile(pdfFile.path)],
-          text: 'My QuickCalc Activity Report - Password: $_pdfPassword',
-          subject: 'QuickCalc Report - Password Protected');
+          text: 'My QuickCalc Activity Report - Password protected for security',
+          subject: 'QuickCalc Password Protected Report');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sharing PDF: $e')),
