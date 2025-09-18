@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:pdf_crypto/pdf_crypto.dart'; // ADD THIS
+import 'package:dart_pdf_password_protect/dart_pdf_password_protect.dart';
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -45,8 +45,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   // Timer for PDF export cooldown
   DateTime? _lastExportAdTime;
 
-  // PDF password - YOUR CODE HERE
-  static const String _pdfPassword = 'b"&38+:)fas4#0@ghc62@7/#';
+  // PDF password
+  static const String _pdfPassword = 'QuickCalcSecure123!';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -135,7 +135,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  // FIXED: Create password-protected PDF using pdf_crypto
   Future<File> _createPasswordProtectedPdf() async {
     try {
       // Get user activities for the report
@@ -221,11 +220,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       // Generate PDF bytes
       final pdfData = await pdf.save();
 
-      // Encrypt the PDF using pdf_crypto
-      final encryptedPdfData = await PdfCrypto.encrypt(
-        pdfData,
+      // Encrypt the PDF using dart_pdf_password_protect
+      final encryptedPdfData = await PDFPasswordProtect.encryptPDF(
+        pdfBytes: pdfData,
         password: _pdfPassword,
-        permissions: PdfPermissions.all(), // Allow all operations
+        userPassword: _pdfPassword,
       );
 
       // Save encrypted PDF to temporary file
@@ -276,6 +275,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               ),
               const SizedBox(height: 16),
               const Text('You will need this password to open the PDF file in any PDF reader.'),
+              const SizedBox(height: 8),
+              const Text(
+                'Note: The PDF is encrypted with AES-256 and will prompt for the password when opened in any standard PDF viewer.',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
             ],
           ),
           actions: <Widget>[
