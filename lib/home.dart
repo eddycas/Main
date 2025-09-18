@@ -16,6 +16,8 @@ import 'package:pointycastle/padded_block_cipher/padded_block_cipher.dart';
 import 'package:pointycastle/padded_block_cipher/padded_block_cipher_impl.dart';
 import 'package:pointycastle/paddings/pkcs7.dart';
 import 'package:pointycastle/api.dart' as crypto;
+import 'package:file_picker/file_picker.dart';
+import 'package:open_file/open_file.dart';
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -53,7 +55,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   DateTime? _lastExportAdTime;
 
   // PDF password
-  static const String _pdfPassword = 'gush5+\:)#6gsj5#8+';
+  static const String _pdfPassword = 'gush5+:)#6gsj5#8+';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -83,6 +85,29 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     Future.delayed(const Duration(seconds: 2), () {
       adsManager.loadAppOpenAd();
     });
+
+    // Clean up old temporary files on app start
+    _cleanupOldFiles();
+  }
+
+  Future<void> _cleanupOldFiles() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final files = tempDir.listSync();
+      final now = DateTime.now();
+      
+      for (var file in files) {
+        if (file is File) {
+          final stat = await file.stat();
+          final fileAge = now.difference(stat.modified);
+          if (fileAge > const Duration(hours: 1)) {
+            file.delete().catchError((_) {});
+          }
+        }
+      }
+    } catch (e) {
+      print('Error cleaning up files: $e');
+    }
   }
 
   @override
@@ -167,6 +192,29 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     } catch (e) {
       print('AES encryption error: $e');
       rethrow;
+    }
+  }
+
+  List<int> _aesDecrypt(List<int> encryptedData, String password) {
+    try {
+      // Extract IV (first 16 bytes) and actual encrypted data
+      final iv = Uint8List.fromList(encryptedData.sublist(0, 16));
+      final ciphertext = Uint8List.fromList(encryptedData.sublist(16));
+      
+      // Generate key from password
+      final key = _generateAesKey(password);
+      
+      // Create AES cipher
+      final cipher = PaddedBlockCipherImpl(PKCS7Padding(), AESEngine());
+      final params = crypto.ParametersWithIV(crypto.KeyParameter(key), iv);
+      cipher.init(false, params); // false for decryption
+      
+      // Decrypt the data
+      final decryptedData = cipher.process(ciphertext);
+      
+      return decryptedData;
+    } catch (e) {
+      throw Exception('Decryption failed: Wrong password or corrupted file');
     }
   }
 
@@ -357,8 +405,13 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
       // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/quickcalc_activity_report.aes');
+      final file = File('${tempDir.path}/quickcalc_activity_report_${DateTime.now().millisecondsSinceEpoch}.aes');
       await file.writeAsBytes(encryptedPdfData);
+
+      // Schedule file deletion after 1 hour
+      Future.delayed(const Duration(hours: 1), () {
+        file.delete().catchError((_) {});
+      });
 
       return file;
     } catch (e) {
@@ -399,11 +452,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               const SizedBox(height: 8),
               Text('• File format: AES-256 encrypted binary'),
               Text('• Encryption: AES-256 CBC mode'),
-              Text('• Key derivation: Password-based'),
+              Text('• Password: $_pdfPassword'),
+              Text('• Auto-delete: After 1 hour'),
               const SizedBox(height: 16),
               const Text(
-                'Note: This file requires a custom decryption tool to read. '
-                'The encryption ensures maximum security for your activity data.',
+                'Note: Use the decryption feature in this app to view the report.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -423,7 +476,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       await Share.shareXFiles([XFile(encryptedFile.path)],
           text: 'My QuickCalc Activity Report - AES-256 Encrypted\n'
                 'Password: $_pdfPassword\n'
-                'Note: Requires custom decryption tool',
+                'Use the decryption feature in QuickCalc to view this report',
           subject: 'QuickCalc AES-256 Encrypted Report');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -437,11 +490,81 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       _lastExportAdTime = now;
       _maybeShowInterstitial();
     }
+  }
 
-    // Clean up the temporary file after a short delay
-    Future.delayed(const Duration(seconds: 30), () {
-      encryptedFile.delete().catchError((_) {});
-    });
+  Future<void> _decryptAndViewReport() async {
+    try {
+      // Let user pick the encrypted .aes file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['aes'],
+        dialogTitle: 'Select Encrypted Report',
+      );
+
+      if (result == null || result.files.isEmpty) return; // User cancelled
+
+      final encryptedFile = File(result.files.first.path!);
+      final encryptedData = await encryptedFile.readAsBytes();
+
+      // Show password dialog
+      final passwordController = TextEditingController();
+      final password = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Enter Password'),
+          content: TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'Enter decryption password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(passwordController.text),
+              child: const Text('Decrypt'),
+            ),
+          ],
+        ),
+      );
+
+      if (password == null || password.isEmpty) return;
+
+      // Decrypt the file
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Decrypting...')),
+      );
+
+      final decryptedData = _aesDecrypt(encryptedData, password);
+
+      // Save decrypted PDF temporarily
+      final tempDir = await getTemporaryDirectory();
+      final decryptedFile = File('${tempDir.path}/decrypted_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await decryptedFile.writeAsBytes(decryptedData);
+
+      // Schedule file deletion after 1 hour
+      Future.delayed(const Duration(hours: 1), () {
+        decryptedFile.delete().catchError((_) {});
+      });
+
+      // Open the PDF
+      await OpenFile.open(decryptedFile.path);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report decrypted successfully!')),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Decryption failed: ${e.toString().replaceAll('Exception: ', '')}')),
+      );
+    }
   }
 
   void _clearUserActivity() async {
@@ -538,6 +661,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
             icon: const Icon(Icons.description),
             onPressed: _exportPdfReport,
             tooltip: 'Export Encrypted Report',
+          ),
+          IconButton(
+            icon: const Icon(Icons.lock_open),
+            onPressed: _decryptAndViewReport,
+            tooltip: 'Decrypt Report',
           ),
           IconButton(
             icon: const Icon(Icons.color_lens),
