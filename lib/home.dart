@@ -46,7 +46,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   DateTime? _lastExportAdTime;
 
   // PDF password
-  static const String _pdfPassword = 'gush5+$:)#6gsj5#8+';
+  static const String _pdfPassword = 'gush5+:)#6gsj5#8+';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
