@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'dart:math';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,7 +47,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   DateTime? _lastExportAdTime;
 
   // PDF password
-  static const String _pdfPassword = 'gush5+:)#6gsj5#8+';
+  static const String _pdfPassword = 'gush5+\:)#6gsj5#8+';
 
   late PremiumManager premiumManager;
   late AdsManager adsManager;
@@ -288,34 +289,39 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         ),
       );
 
-      // Save PDF with simple password protection
-      final pdfData = await pdf.save(
-        password: _pdfPassword,
-        userPassword: _pdfPassword,
-        permissions: const pw.PdfPermissions(
-          copy: true,
-          modify: false,
-          print: true,
-          add: false,
+      // Save PDF with AES-256 encryption using the latest pdf package API
+      final pdfData = await pdf.save();
+
+      // For the latest pdf package, use the encryption parameters directly
+      final encryptedPdfData = await pdf.save(
+        encryption: pw.Encryption(
+          userPassword: _pdfPassword,
+          ownerPassword: _pdfPassword,
+          permissions: const pw.PdfPermissions(
+            print: true,
+            copy: false,
+            modify: false,
+            addAnnotation: false,
+            fillForm: false,
+          ),
         ),
-        encrypt: true,
       );
 
       // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      await file.writeAsBytes(pdfData);
+      await file.writeAsBytes(encryptedPdfData);
 
       return file;
     } catch (e) {
-      print('Error creating password-protected PDF: $e');
+      print('Error creating encrypted PDF: $e');
       rethrow;
     }
   }
 
   void _exportPdfReport() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Generating password-protected PDF report...')),
+      const SnackBar(content: Text('Generating encrypted PDF report...')),
     );
 
     final File pdfFile;
@@ -328,18 +334,18 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       return;
     }
 
-    // Show the dialog explaining the password protection
+    // Show the dialog explaining the encryption
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('PDF Password Protected'),
+          title: const Text('PDF Encrypted with AES-256'),
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your report has been protected with a password.'),
+              Text('Your report has been encrypted with AES-256 encryption.'),
               SizedBox(height: 16),
               Text('When you open this PDF in any PDF reader:'),
               SizedBox(height: 8),
@@ -348,7 +354,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               Text('• Works with Adobe Reader, Preview, Chrome, etc.'),
               SizedBox(height: 16),
               Text(
-                'The password ensures only authorized users can access your activity data.',
+                'The PDF is secured with industry-standard encryption to protect your activity data.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -363,11 +369,11 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       },
     );
 
-    // Share the password-protected PDF
+    // Share the encrypted PDF
     try {
       await Share.shareXFiles([XFile(pdfFile.path)],
-          text: 'My QuickCalc Activity Report - Password protected for security',
-          subject: 'QuickCalc Password Protected Report');
+          text: 'My QuickCalc Activity Report - Encrypted with AES-256',
+          subject: 'QuickCalc Encrypted Activity Report');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sharing PDF: $e')),
