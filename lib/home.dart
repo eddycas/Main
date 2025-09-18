@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf_crypto/pdf_crypto.dart'; // ADD THIS
 import 'premium_manager.dart';
 import 'ads_manager.dart';
 import 'calculator_logic.dart';
@@ -82,7 +83,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 500), () {
         adsManager.showAppOpenAd();
-      );
+      });
     }
   }
 
@@ -134,7 +135,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  // FIXED: Create password-protected PDF with correct encryption API
+  // FIXED: Create password-protected PDF using pdf_crypto
   Future<File> _createPasswordProtectedPdf() async {
     try {
       // Get user activities for the report
@@ -217,23 +218,20 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
         ),
       );
 
-      // CORRECT ENCRYPTION API: Encrypt when saving
-      final encryptedData = pdf.saveSync(
-        encryption: pw.Encryption(
-          userPassword: _pdfPassword,
-          ownerPassword: _pdfPassword,
-          permissions: const pw.Permissions(
-            printing: pw.Permission.allow,
-            copying: pw.Permission.allow,
-            modifying: pw.Permission.allow,
-          ),
-        ),
+      // Generate PDF bytes
+      final pdfData = await pdf.save();
+
+      // Encrypt the PDF using pdf_crypto
+      final encryptedPdfData = await PdfCrypto.encrypt(
+        pdfData,
+        password: _pdfPassword,
+        permissions: PdfPermissions.all(), // Allow all operations
       );
 
       // Save encrypted PDF to temporary file
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/quickcalc_activity_report.pdf');
-      await file.writeAsBytes(encryptedData);
+      await file.writeAsBytes(encryptedPdfData);
 
       return file;
     } catch (e) {
@@ -535,8 +533,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                     Expanded(
                       child: GridView.count(
                         crossAxisCount: 2,
-                        mainAxisSpensing: 12,
-                        crossAxisSpensing: 12,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
                         children: [
                           _buildScientificButton('SIN', 'sin'),
                           _buildScientificButton('COS', 'cos'),
