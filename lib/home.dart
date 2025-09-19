@@ -131,7 +131,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     final savedHistory = prefs.getStringList('calc_history') ?? [];
     setState(() {
       history.addAll(savedHistory);
-    });
+    );
   }
 
   Future<void> saveHistory() async {
@@ -427,13 +427,12 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               const SizedBox(height: 16),
               const Text('File Information:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('• File format: AES-256 encrypted binary'),
-              Text('• Encryption: AES-256 CBC mode'),
-              Text('• Password: $_pdfPassword'),
-              Text('• Auto-delete: After 1 hour'),
+              const Text('• File format: AES-256 encrypted binary'),
+              const Text('• Encryption: AES-256 CBC mode'),
+              const Text('• Auto-delete: After 1 hour'),
               const SizedBox(height: 16),
               const Text(
-                'Note: Use the decryption feature in this app to view the report.',
+                'Note: Contact the developer for decryption password if needed.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -452,8 +451,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     try {
       await Share.shareXFiles([XFile(encryptedFile.path)],
           text: 'My QuickCalc Activity Report - AES-256 Encrypted\n'
-                'Password: $_pdfPassword\n'
-                'Use the decryption feature in QuickCalc to view this report',
+                'Contact the developer for decryption assistance',
           subject: 'QuickCalc AES-256 Encrypted Report');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -471,16 +469,25 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
   Future<void> _decryptAndViewReport() async {
     try {
-      // Let user pick the encrypted .aes file
+      // Let user pick any file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['aes'],
+        type: FileType.any,
         dialogTitle: 'Select Encrypted Report',
       );
 
-      if (result == null || result.files.isEmpty) return; // User cancelled
+      if (result == null || result.files.isEmpty) return;
 
-      final encryptedFile = File(result.files.first.path!);
+      final pickedFile = result.files.first;
+      
+      // Manual file extension check
+      if (!pickedFile.name.toLowerCase().endsWith('.aes')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a valid .aes file')),
+        );
+        return;
+      }
+
+      final encryptedFile = File(pickedFile.path!);
       final encryptedData = await encryptedFile.readAsBytes();
 
       // Show password dialog
@@ -495,7 +502,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                hintText: 'Enter decryption password',
+                hintText: 'Ask the developer for the password',
                 border: OutlineInputBorder(),
               ),
             ),
