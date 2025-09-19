@@ -131,7 +131,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     final savedHistory = prefs.getStringList('calc_history') ?? [];
     setState(() {
       history.addAll(savedHistory);
-    );
+    });
   }
 
   Future<void> saveHistory() async {
