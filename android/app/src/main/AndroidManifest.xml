@@ -22,6 +22,16 @@
             android:name="io.flutter.embedding.android.NormalTheme"
             android:resource="@style/NormalTheme"/>
 
+        <!-- Flutter embedding version -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!-- ✅ AdMob App ID (Google test ID to prevent crashes) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
@@ -37,11 +47,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <!-- Flutter embedding version -->
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2" />
 
     </application>
 
