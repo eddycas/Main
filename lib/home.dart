@@ -483,13 +483,15 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   }
 
   Future<void> _decryptAndViewReport() async {
-    try {
-      // Let user pick any file but suggest .aes files
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        dialogTitle: 'Select Encrypted Report ($_encryptedFileExtension file)',
-        allowedExtensions: [_encryptedFileExtension.substring(1)], // Remove the dot
-      );
+  try {
+    // Let user pick any file but suggest .aes files
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      dialogTitle: 'Select Encrypted Report ($_encryptedFileExtension file)',
+      allowedExtensions: ['aes'], // CHANGED: Just use 'aes' without the dot
+    );
+
+    if (result == null || result.files.isEmpty) return;
 
       if (result == null || result.files.isEmpty) return;
 
