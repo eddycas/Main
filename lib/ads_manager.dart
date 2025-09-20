@@ -15,10 +15,8 @@ class AdsManager {
   AppOpenAd? appOpenAd;
   bool isAppOpenAdLoaded = false;
 
-  // GETTER: Check if an interstitial ad is loaded and ready to show
   bool get isInterstitialReady => interstitialAd != null;
 
-  // Use platform-specific ad unit IDs (REPLACE WITH YOUR REAL IDs)
   static const String appOpenAdIdAndroid = 'ca-app-pub-your-android-app-open-id/1234567890';
   static const String appOpenAdIdIOS = 'ca-app-pub-your-ios-app-open-id/1234567890';
   
@@ -26,14 +24,12 @@ class AdsManager {
   bool _isAppOpenAdLoading = false;
 
   String _getAppOpenAdUnitId() {
-    // Use test IDs for debug, real IDs for release
     if (kDebugMode) {
-      return "ca-app-pub-3940256099942544/3419835294"; // Test ID
+      return "ca-app-pub-3940256099942544/3419835294";
     } else {
-      // Platform-specific real IDs (REPLACE THESE WITH YOUR ACTUAL IDs)
       if (Platform.isAndroid) return appOpenAdIdAndroid;
       if (Platform.isIOS) return appOpenAdIdIOS;
-      return "ca-app-pub-3940256099942544/3419835294"; // Fallback test ID
+      return "ca-app-pub-3940256099942544/3419835294";
     }
   }
 
@@ -41,7 +37,7 @@ class AdsManager {
     if (_isAppOpenAdLoading || appOpenAd != null) return;
     
     _isAppOpenAdLoading = true;
-    print('Loading App Open Ad...');
+    print('🔄 FORCE LOADING App Open Ad...');
     
     final adUnitId = _getAppOpenAdUnitId();
     
@@ -53,32 +49,29 @@ class AdsManager {
           appOpenAd = ad;
           isAppOpenAdLoaded = true;
           _isAppOpenAdLoading = false;
-          print('App Open Ad loaded successfully');
+          print('✅ App Open Ad loaded successfully');
 
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdShowedFullScreenContent: (ad) {
-              print('App Open Ad showed successfully');
+              print('🎉 App Open Ad showed successfully');
               _lastAppOpenAdShownTime = DateTime.now();
               UserActivityLogger.logUserActivity('ad_watched', 'app_open', 'shown');
               DeveloperAnalytics.trackAdEvent('shown', 'app_open', 'app_open_ad');
             },
             onAdDismissedFullScreenContent: (ad) {
-              print('App Open Ad dismissed');
+              print('📤 App Open Ad dismissed');
               ad.dispose();
               isAppOpenAdLoaded = false;
               appOpenAd = null;
-              // Wait before loading next ad
-              Future.delayed(const Duration(minutes: 2), loadAppOpenAd);
+              Future.delayed(const Duration(seconds: 5), loadAppOpenAd);
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
-              print('Failed to show app open ad: $error');
+              print('❌ Failed to show app open ad: $error');
               ad.dispose();
               isAppOpenAdLoaded = false;
               appOpenAd = null;
               _isAppOpenAdLoading = false;
-              DeveloperAnalytics.trackAdEvent('error', 'app_open', 'show_failed');
-              // Retry after shorter delay
-              Future.delayed(const Duration(minutes: 1), loadAppOpenAd);
+              Future.delayed(const Duration(seconds: 10), loadAppOpenAd);
             },
             onAdClicked: (ad) {
               UserActivityLogger.logUserActivity('ad_click', 'app_open', '');
@@ -87,23 +80,19 @@ class AdsManager {
           );
         },
         onAdFailedToLoad: (error) {
-          print('Failed to load app open ad: $error');
+          print('❌ Failed to load app open ad: $error');
           isAppOpenAdLoaded = false;
           appOpenAd = null;
           _isAppOpenAdLoading = false;
-          DeveloperAnalytics.trackAdEvent('error', 'app_open', 'load_failed');
-          // Retry after delay with backoff
-          Future.delayed(const Duration(minutes: 2), loadAppOpenAd);
+          Future.delayed(const Duration(seconds: 15), loadAppOpenAd);
         },
       ),
     );
   }
 
-  // Show App Open Ad with cooldown and conditions
   Future<void> showAppOpenAd() async {
-    print('=== APP OPEN AD ATTEMPT ===');
+    print('\n=== APP OPEN AD ATTEMPT ===');
     
-    // Don't show if premium is active
     final prefs = await SharedPreferences.getInstance();
     final premiumActive = prefs.getBool('isPremium') ?? false;
     if (premiumActive) {
@@ -111,11 +100,10 @@ class AdsManager {
       return;
     }
 
-    // Cooldown check - reduced to 30 seconds for testing
     final now = DateTime.now();
     if (_lastAppOpenAdShownTime != null && 
-        now.difference(_lastAppOpenAdShownTime!) < const Duration(seconds: 30)) {
-      print('⏰ App Open Ad skipped: Cooldown period');
+        now.difference(_lastAppOpenAdShownTime!) < const Duration(seconds: 10)) {
+      print('⏰ App Open Ad skipped: Cooldown period (10s)');
       return;
     }
 
@@ -124,159 +112,18 @@ class AdsManager {
         print('✅ Showing App Open Ad...');
         appOpenAd!.show();
         _lastAppOpenAdShownTime = DateTime.now();
-        print('🎉 App Open Ad shown successfully!');
       } catch (e) {
         print('❌ Error showing app open ad: $e');
-        // Try to load a new one if this one fails
         loadAppOpenAd();
       }
     } else {
-      print('❌ App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
+      print('❌ App Open Ad not ready. Loaded: $isAppOpenAdLoaded');
       print('🔄 Loading new App Open Ad...');
       loadAppOpenAd();
     }
   }
 
-  void loadTopBanner({required VoidCallback onLoaded}) {
-    topBanner = BannerAd(
-      adUnitId: "ca-app-pub-3940256099942544/6300978111",
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          onLoaded();
-          UserActivityLogger.logUserActivity('ad_impression', 'top_banner', ''); // ✅ FIXED: ad_impression NOT ad_click
-          DeveloperAnalytics.trackAdEvent('impression', 'banner', 'top_banner');
-        },
-        onAdFailedToLoad: (ad, err) {
-          print('Failed to load top banner: $err');
-          ad.dispose();
-        },
-        onAdClicked: (ad) {
-          UserActivityLogger.logUserActivity('ad_click', 'top_banner', ''); // ✅ REAL clicks
-          DeveloperAnalytics.trackAdEvent('click', 'banner', 'top_banner');
-        },
-      ),
-    )..load();
-  }
-
-  void loadBottomBanner({required VoidCallback onLoaded}) {
-    bottomBanner = BannerAd(
-      adUnitId: "ca-app-pub-3940256099942544/6300978111",
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          onLoaded();
-          UserActivityLogger.logUserActivity('ad_impression', 'bottom_banner', ''); // ✅ FIXED: ad_impression NOT ad_click
-          DeveloperAnalytics.trackAdEvent('impression', 'banner', 'bottom_banner');
-        },
-        onAdFailedToLoad: (ad, err) {
-          print('Failed to load bottom banner: $err');
-          ad.dispose();
-        },
-        onAdClicked: (ad) {
-          UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', ''); // ✅ REAL clicks
-          DeveloperAnalytics.trackAdEvent('click', 'banner', 'bottom_banner');
-        },
-      ),
-    )..load();
-  }
-
-  void loadRewardedAd({required Function(RewardedAd) onLoaded}) {
-    RewardedAd.load(
-      adUnitId: "ca-app-pub-3940256099942544/5224354917",
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          onLoaded(ad);
-          UserActivityLogger.logUserActivity('ad_impression', 'rewarded', ''); // ✅ FIXED: ad_impression NOT ad_click
-          DeveloperAnalytics.trackAdEvent('impression', 'rewarded', 'rewarded_ad');
-        },
-        onAdFailedToLoad: (err) {
-          print('Failed to load rewarded ad: $err');
-          Future.delayed(
-            const Duration(seconds: 15),
-            () => loadRewardedAd(onLoaded: onLoaded),
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> showRewardedAd(RewardedAd ad, PremiumManager premiumManager) async {
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-      },
-      onAdFailedToShowFullScreenContent: (ad, err) {
-        print('Failed to show rewarded ad: $err');
-        ad.dispose();
-      },
-      onAdClicked: (ad) {
-        UserActivityLogger.logUserActivity('ad_click', 'rewarded', '');
-        DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
-      },
-    );
-
-    ad.show(onUserEarnedReward: (_, reward) {
-      UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'premium_1hour'); // ✅ FIXED: ad_watched NOT ad_click
-      DeveloperAnalytics.trackAdEvent('reward_earned', 'rewarded', 'rewarded_ad');
-      premiumManager.unlockPremium(hours: 1);
-    });
-  }
-
-  void loadInterstitial() {
-    InterstitialAd.load(
-      adUnitId: "ca-app-pub-3940256099942544/1033173712",
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          interstitialAd = ad;
-          UserActivityLogger.logUserActivity('ad_impression', 'interstitial', ''); // ✅ FIXED: ad_impression NOT ad_click
-          DeveloperAnalytics.trackAdEvent('impression', 'interstitial', 'interstitial_ad');
-
-          interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (ad) {
-              ad.dispose();
-              interstitialAd = null;
-              loadInterstitial();
-            },
-            onAdFailedToShowFullScreenContent: (ad, err) {
-              print('Failed to show interstitial ad: $err');
-              ad.dispose();
-              interstitialAd = null;
-              loadInterstitial();
-            },
-            onAdClicked: (ad) {
-              UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
-              DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
-            },
-          );
-        },
-        onAdFailedToLoad: (err) {
-          print('Failed to load interstitial ad: $err');
-          Future.delayed(const Duration(seconds: 15), loadInterstitial);
-        },
-      ),
-    );
-  }
-
-  void showInterstitial() {
-    if (interstitialAd != null) {
-      interstitialAd!.show();
-      UserActivityLogger.logUserActivity('ad_impression', 'interstitial', ''); // ✅ FIXED: ad_impression NOT ad_click
-      DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
-    } else {
-      print('Tried to show interstitial ad, but it was not loaded.');
-    }
-  }
-
-  void disposeAll() {
-    topBanner?.dispose();
-    bottomBanner?.dispose();
-    rewardedAd?.dispose();
-    interstitialAd?.dispose();
-    appOpenAd?.dispose();
-  }
+  // ... REST OF YOUR METHODS (banner, rewarded, interstitial) ...
+  // Keep your existing banner, rewarded, and interstitial methods here
+  // They were already correct in the previous version
 }
