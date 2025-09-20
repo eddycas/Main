@@ -41,12 +41,14 @@ class AdsManager {
     if (_isAppOpenAdLoading || appOpenAd != null) return;
     
     _isAppOpenAdLoading = true;
+    print('Loading App Open Ad...');
     
     final adUnitId = _getAppOpenAdUnitId();
     
     AppOpenAd.load(
       adUnitId: adUnitId,
       request: const AdRequest(),
+      orientation: AppOpenAd.orientationPortrait,
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
           appOpenAd = ad;
@@ -55,15 +57,19 @@ class AdsManager {
           print('App Open Ad loaded successfully');
 
           appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
+            onAdShowedFullScreenContent: (ad) {
+              print('App Open Ad showed successfully');
+              _lastAppOpenAdShownTime = DateTime.now();
+              UserActivityLogger.logUserActivity('ad_watched', 'app_open', 'shown');
+              DeveloperAnalytics.trackAdEvent('shown', 'app_open', 'app_open_ad');
+            },
             onAdDismissedFullScreenContent: (ad) {
+              print('App Open Ad dismissed');
               ad.dispose();
               isAppOpenAdLoaded = false;
               appOpenAd = null;
-              _lastAppOpenAdShownTime = DateTime.now();
-              UserActivityLogger.logUserActivity('ad_watched', 'app_open', 'dismissed');
-              DeveloperAnalytics.trackAdEvent('completed', 'app_open', 'app_open_ad');
               // Wait before loading next ad
-              Future.delayed(const Duration(minutes: 5), loadAppOpenAd);
+              Future.delayed(const Duration(minutes: 2), loadAppOpenAd);
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
               print('Failed to show app open ad: $error');
@@ -73,7 +79,11 @@ class AdsManager {
               _isAppOpenAdLoading = false;
               DeveloperAnalytics.trackAdEvent('error', 'app_open', 'show_failed');
               // Retry after shorter delay
-              Future.delayed(const Duration(minutes: 2), loadAppOpenAd);
+              Future.delayed(const Duration(minutes: 1), loadAppOpenAd);
+            },
+            onAdClicked: (ad) {
+              UserActivityLogger.logUserActivity('ad_click', 'app_open', '');
+              DeveloperAnalytics.trackAdEvent('click', 'app_open', 'app_open_ad');
             },
           );
         },
@@ -84,7 +94,7 @@ class AdsManager {
           _isAppOpenAdLoading = false;
           DeveloperAnalytics.trackAdEvent('error', 'app_open', 'load_failed');
           // Retry after delay with backoff
-          Future.delayed(const Duration(minutes: 3), loadAppOpenAd);
+          Future.delayed(const Duration(minutes: 2), loadAppOpenAd);
         },
       ),
     );
@@ -92,6 +102,9 @@ class AdsManager {
 
   // Show App Open Ad with cooldown and conditions
   Future<void> showAppOpenAd() async {
+    print('Attempting to show App Open Ad...');
+    print('Is loaded: $isAppOpenAdLoaded, Ad object: ${appOpenAd != null}');
+    
     // Don't show if premium is active
     final prefs = await SharedPreferences.getInstance();
     final premiumActive = prefs.getBool('isPremium') ?? false;
@@ -100,35 +113,37 @@ class AdsManager {
       return;
     }
 
-    // Cooldown check - don't show ads too frequently
+    // Cooldown check - don't show ads too frequently (reduced from 5 to 2 minutes)
     final now = DateTime.now();
     if (_lastAppOpenAdShownTime != null && 
-        now.difference(_lastAppOpenAdShownTime!) < const Duration(minutes: 5)) {
+        now.difference(_lastAppOpenAdShownTime!) < const Duration(minutes: 2)) {
       print('App Open Ad skipped: Cooldown period');
       return;
     }
 
     if (isAppOpenAdLoaded && appOpenAd != null) {
       try {
+        print('Showing App Open Ad...');
         appOpenAd!.show();
-        _lastAppOpenAdShownTime = DateTime.now();
-        // Track app open ad impression
         DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
         UserActivityLogger.logUserActivity('ad_impression', 'app_open', '');
-        print('App Open Ad shown successfully');
       } catch (e) {
         print('Error showing app open ad: $e');
         DeveloperAnalytics.trackAdEvent('error', 'app_open', 'show_error');
+        // Try to load a new one if this one fails
+        loadAppOpenAd();
       }
     } else {
       print('App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
       // Try to load if not loaded
       if (!_isAppOpenAdLoading) {
+        print('Loading new App Open Ad...');
         loadAppOpenAd();
       }
     }
   }
 
+  // ... rest of your methods remain the same (topBanner, bottomBanner, etc.)
   void loadTopBanner({required VoidCallback onLoaded}) {
     topBanner = BannerAd(
       adUnitId: "ca-app-pub-3940256099942544/6300978111",
@@ -141,8 +156,8 @@ class AdsManager {
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'top_banner');
         },
         onAdFailedToLoad: (ad, err) {
-          ad.dispose();
           print('Failed to load top banner: $err');
+          ad.dispose();
         },
         onAdClicked: (ad) {
           UserActivityLogger.logUserActivity('ad_click', 'top_banner', '');
@@ -164,12 +179,12 @@ class AdsManager {
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'bottom_banner');
         },
         onAdFailedToLoad: (ad, err) {
-          ad.dispose();
           print('Failed to load bottom banner: $err');
+          ad.dispose();
         },
         onAdClicked: (ad) {
           UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', '');
-          DeveloperAnalytics.trackAdEvent('click', 'banner', 'top_banner');
+          DeveloperAnalytics.trackAdEvent('click', 'banner', 'bottom_banner');
         },
       ),
     )..load();
@@ -205,11 +220,15 @@ class AdsManager {
         print('Failed to show rewarded ad: $err');
         ad.dispose();
       },
+      onAdClicked: (ad) {
+        UserActivityLogger.logUserActivity('ad_click', 'rewarded', '');
+        DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
+      },
     );
 
-    ad.show(onUserEarnedReward: (_, __) {
-      UserActivityLogger.logUserActivity('ad_click', 'rewarded', 'premium_1hour');
-      DeveloperAnalytics.trackAdEvent('click', 'rewarded', 'rewarded_ad');
+    ad.show(onUserEarnedReward: (_, reward) {
+      UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'premium_1hour');
+      DeveloperAnalytics.trackAdEvent('reward_earned', 'rewarded', 'rewarded_ad');
       premiumManager.unlockPremium(hours: 1);
     });
   }
@@ -235,6 +254,10 @@ class AdsManager {
               ad.dispose();
               interstitialAd = null;
               loadInterstitial();
+            },
+            onAdClicked: (ad) {
+              UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
+              DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
             },
           );
         },
