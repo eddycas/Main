@@ -486,7 +486,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     try {
       // Let user pick any file but suggest .aes files
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
         dialogTitle: 'Select Encrypted Report ($_encryptedFileExtension file)',
         allowedExtensions: [_encryptedFileExtension.substring(1)], // Remove the dot
       );
