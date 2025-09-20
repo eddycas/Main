@@ -482,30 +482,20 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     }
   }
 
-  Future<void> _decryptAndViewReport() async {
+Future<void> _decryptAndViewReport() async {
   try {
-    // Let user pick any file but suggest .aes files
+    // Let user pick ANY file - you know which .aes file to select!
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      dialogTitle: 'Select Encrypted Report ($_encryptedFileExtension file)',
-      allowedExtensions: ['aes'], // CHANGED: Just use 'aes' without the dot
+      type: FileType.any,  // Changed to FileType.any
+      dialogTitle: 'Select your encrypted .aes file',
+      // REMOVED the allowedExtensions line completely
     );
 
     if (result == null || result.files.isEmpty) return;
 
-      final pickedFile = result.files.first;
-      
-      // Check if file has the correct extension
-      if (!pickedFile.name.toLowerCase().endsWith(_encryptedFileExtension)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a valid encrypted file with .aes extension')),
-        );
-        return;
-      }
-
-      final encryptedFile = File(pickedFile.path!);
-      final encryptedData = await encryptedFile.readAsBytes();
-
+    final pickedFile = result.files.first;
+    final encryptedFile = File(pickedFile.path!);
+    final encryptedData = await encryptedFile.readAsBytes();
       // Show password dialog
       final passwordController = TextEditingController();
       final password = await showDialog<String>(
