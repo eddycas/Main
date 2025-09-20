@@ -493,8 +493,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
     if (result == null || result.files.isEmpty) return;
 
-      if (result == null || result.files.isEmpty) return;
-
       final pickedFile = result.files.first;
       
       // Check if file has the correct extension
