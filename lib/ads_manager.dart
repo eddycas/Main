@@ -46,10 +46,9 @@ class AdsManager {
     final adUnitId = _getAppOpenAdUnitId();
     
     AppOpenAd.load(
-      adUnitId: adUnitId,
-      request: const AdRequest(),
-      orientation: AppOpenAd.orientationPortrait,
-      adLoadCallback: AppOpenAdLoadCallback(
+  adUnitId: adUnitId,
+  request: const AdRequest(),
+  adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
           appOpenAd = ad;
           isAppOpenAdLoaded = true;
