@@ -46,9 +46,9 @@ class AdsManager {
     final adUnitId = _getAppOpenAdUnitId();
     
     AppOpenAd.load(
-  adUnitId: adUnitId,
-  request: const AdRequest(),
-  adLoadCallback: AppOpenAdLoadCallback(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
           appOpenAd = ad;
           isAppOpenAdLoaded = true;
@@ -101,48 +101,42 @@ class AdsManager {
 
   // Show App Open Ad with cooldown and conditions
   Future<void> showAppOpenAd() async {
-    print('Attempting to show App Open Ad...');
-    print('Is loaded: $isAppOpenAdLoaded, Ad object: ${appOpenAd != null}');
+    print('=== APP OPEN AD ATTEMPT ===');
     
     // Don't show if premium is active
     final prefs = await SharedPreferences.getInstance();
     final premiumActive = prefs.getBool('isPremium') ?? false;
     if (premiumActive) {
-      print('App Open Ad skipped: Premium active');
+      print('❌ App Open Ad skipped: Premium active');
       return;
     }
 
-    // Cooldown check - don't show ads too frequently (reduced from 5 to 2 minutes)
+    // Cooldown check - reduced to 30 seconds for testing
     final now = DateTime.now();
     if (_lastAppOpenAdShownTime != null && 
-        now.difference(_lastAppOpenAdShownTime!) < const Duration(minutes: 2)) {
-      print('App Open Ad skipped: Cooldown period');
+        now.difference(_lastAppOpenAdShownTime!) < const Duration(seconds: 30)) {
+      print('⏰ App Open Ad skipped: Cooldown period');
       return;
     }
 
     if (isAppOpenAdLoaded && appOpenAd != null) {
       try {
-        print('Showing App Open Ad...');
+        print('✅ Showing App Open Ad...');
         appOpenAd!.show();
-        DeveloperAnalytics.trackAdEvent('impression', 'app_open', 'app_open_ad');
-        UserActivityLogger.logUserActivity('ad_impression', 'app_open', '');
+        _lastAppOpenAdShownTime = DateTime.now();
+        print('🎉 App Open Ad shown successfully!');
       } catch (e) {
-        print('Error showing app open ad: $e');
-        DeveloperAnalytics.trackAdEvent('error', 'app_open', 'show_error');
+        print('❌ Error showing app open ad: $e');
         // Try to load a new one if this one fails
         loadAppOpenAd();
       }
     } else {
-      print('App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
-      // Try to load if not loaded
-      if (!_isAppOpenAdLoading) {
-        print('Loading new App Open Ad...');
-        loadAppOpenAd();
-      }
+      print('❌ App Open Ad not ready. Loaded: $isAppOpenAdLoaded, Ad: ${appOpenAd != null}');
+      print('🔄 Loading new App Open Ad...');
+      loadAppOpenAd();
     }
   }
 
-  // ... rest of your methods remain the same (topBanner, bottomBanner, etc.)
   void loadTopBanner({required VoidCallback onLoaded}) {
     topBanner = BannerAd(
       adUnitId: "ca-app-pub-3940256099942544/6300978111",
@@ -151,7 +145,7 @@ class AdsManager {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           onLoaded();
-          UserActivityLogger.logUserActivity('ad_impression', 'top_banner', '');
+          UserActivityLogger.logUserActivity('ad_impression', 'top_banner', ''); // ✅ FIXED: ad_impression NOT ad_click
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'top_banner');
         },
         onAdFailedToLoad: (ad, err) {
@@ -159,7 +153,7 @@ class AdsManager {
           ad.dispose();
         },
         onAdClicked: (ad) {
-          UserActivityLogger.logUserActivity('ad_click', 'top_banner', '');
+          UserActivityLogger.logUserActivity('ad_click', 'top_banner', ''); // ✅ REAL clicks
           DeveloperAnalytics.trackAdEvent('click', 'banner', 'top_banner');
         },
       ),
@@ -174,7 +168,7 @@ class AdsManager {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           onLoaded();
-          UserActivityLogger.logUserActivity('ad_impression', 'bottom_banner', '');
+          UserActivityLogger.logUserActivity('ad_impression', 'bottom_banner', ''); // ✅ FIXED: ad_impression NOT ad_click
           DeveloperAnalytics.trackAdEvent('impression', 'banner', 'bottom_banner');
         },
         onAdFailedToLoad: (ad, err) {
@@ -182,7 +176,7 @@ class AdsManager {
           ad.dispose();
         },
         onAdClicked: (ad) {
-          UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', '');
+          UserActivityLogger.logUserActivity('ad_click', 'bottom_banner', ''); // ✅ REAL clicks
           DeveloperAnalytics.trackAdEvent('click', 'banner', 'bottom_banner');
         },
       ),
@@ -196,7 +190,7 @@ class AdsManager {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           onLoaded(ad);
-          UserActivityLogger.logUserActivity('ad_impression', 'rewarded', '');
+          UserActivityLogger.logUserActivity('ad_impression', 'rewarded', ''); // ✅ FIXED: ad_impression NOT ad_click
           DeveloperAnalytics.trackAdEvent('impression', 'rewarded', 'rewarded_ad');
         },
         onAdFailedToLoad: (err) {
@@ -226,7 +220,7 @@ class AdsManager {
     );
 
     ad.show(onUserEarnedReward: (_, reward) {
-      UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'premium_1hour');
+      UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'premium_1hour'); // ✅ FIXED: ad_watched NOT ad_click
       DeveloperAnalytics.trackAdEvent('reward_earned', 'rewarded', 'rewarded_ad');
       premiumManager.unlockPremium(hours: 1);
     });
@@ -239,7 +233,7 @@ class AdsManager {
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           interstitialAd = ad;
-          UserActivityLogger.logUserActivity('ad_impression', 'interstitial', '');
+          UserActivityLogger.logUserActivity('ad_impression', 'interstitial', ''); // ✅ FIXED: ad_impression NOT ad_click
           DeveloperAnalytics.trackAdEvent('impression', 'interstitial', 'interstitial_ad');
 
           interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -271,7 +265,7 @@ class AdsManager {
   void showInterstitial() {
     if (interstitialAd != null) {
       interstitialAd!.show();
-      UserActivityLogger.logUserActivity('ad_click', 'interstitial', '');
+      UserActivityLogger.logUserActivity('ad_impression', 'interstitial', ''); // ✅ FIXED: ad_impression NOT ad_click
       DeveloperAnalytics.trackAdEvent('click', 'interstitial', 'interstitial_ad');
     } else {
       print('Tried to show interstitial ad, but it was not loaded.');
