@@ -17,24 +17,20 @@ class AdsManager {
 
   bool get isInterstitialReady => interstitialAd != null;
 
-  // Ad Unit IDs - Replace with your actual IDs
-  static const String topBannerAdId = 'ca-app-pub-your-top-banner-id/1234567890';
-  static const String bottomBannerAdId = 'ca-app-pub-your-bottom-banner-id/1234567890';
-  static const String rewardedAdId = 'ca-app-pub-your-rewarded-id/1234567890';
-  static const String interstitialAdId = 'ca-app-pub-your-interstitial-id/1234567890';
-  static const String appOpenAdIdAndroid = 'ca-app-pub-your-android-app-open-id/1234567890';
-  static const String appOpenAdIdIOS = 'ca-app-pub-your-ios-app-open-id/1234567890';
+  // ✅ USE GOOGLE'S TEST AD UNIT IDs
+  static const String topBannerAdId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String bottomBannerAdId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String rewardedAdId = 'ca-app-pub-3940256099942544/5224354917';
+  static const String interstitialAdId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String appOpenAdIdAndroid = 'ca-app-pub-3940256099942544/3419835294';
+  static const String appOpenAdIdIOS = 'ca-app-pub-3940256099942544/3419835294';
 
   DateTime? _lastAppOpenAdShownTime;
   bool _isAppOpenAdLoading = false;
 
-  // Helper method to get test ad unit IDs in debug mode
+  // ✅ ALWAYS USE TEST ADS FOR NOW
   String _getAdUnitId(String realId, String testId) {
-    if (kDebugMode) {
-      return testId;
-    } else {
-      return realId;
-    }
+    return testId;
   }
 
   String _getAppOpenAdUnitId() {
@@ -140,10 +136,7 @@ class AdsManager {
     try {
       await ad.show(onUserEarnedReward: (ad, reward) {
         print('🎉 User earned reward: ${reward.amount} ${reward.type}');
-        
-        // FIXED: Use unlockPremium with 1 hour instead of non-existent addPremiumMinutes
-        premiumManager.unlockPremium(hours: 1); // Give 1 hour premium
-        
+        premiumManager.unlockPremium(hours: 1);
         UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'completed');
         DeveloperAnalytics.trackAdEvent('completed', 'rewarded', 'rewarded_ad');
       });
@@ -164,7 +157,7 @@ class AdsManager {
             print('✅ Interstitial ad loaded');
             UserActivityLogger.logUserActivity('ad_loaded', 'interstitial', '');
             
-            ad.fullScreenContentCallback = FullScreenContentCallback(
+            ad.fullScreenContentCallback: FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
                 print('📤 Interstitial dismissed');
                 ad.dispose();
