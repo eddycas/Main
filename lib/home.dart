@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'dart:math';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data'; // ← CORRECTED IMPORT
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -679,7 +679,8 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
             onPressed: _decryptAndViewReport,
             tooltip: 'Decrypt Report',
           ),
-                      icon: const Icon(Icons.color_lens),
+          IconButton(
+            icon: const Icon(Icons.color_lens),
             onPressed: widget.toggleTheme,
             tooltip: 'Toggle theme',
           ),
@@ -798,46 +799,47 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
                       children: [
                         const Text("Scientific Functions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => rightPanelOpen = false)),
-                    ],
-                  ),
-                  const Divider(),
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      children: [
-                        _buildScientificButton('SIN', 'sin'),
-                        _buildScientificButton('COS', 'cos'),
-                        _buildScientificButton('TAN', 'tan'),
-                        _buildScientificButton('LOG₂', 'log2'),
-                        _buildScientificButton('LOG₁₀', 'log10'),
-                        _buildScientificButton('LOG₂₅', 'log25'),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (!premiumManager.isPremium)
-                    ElevatedButton(
-                      onPressed: isWatchingAd ? null : _watchRewardedAd,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to Unlock Scientific Functions"),
-                    ),
-                  if (premiumManager.isPremium)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        "Premium Active!\nTime remaining: ${premiumManager.remaining.inMinutes.remainder(60).toString().padLeft(2,'0')}:${(premiumManager.remaining.inSeconds.remainder(60)).toString().padLeft(2,'0')}",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    const Divider(),
+                    Expanded(
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        children: [
+                          _buildScientificButton('SIN', 'sin'),
+                          _buildScientificButton('COS', 'cos'),
+                          _buildScientificButton('TAN', 'tan'),
+                          _buildScientificButton('LOG₂', 'log2'),
+                          _buildScientificButton('LOG₁₀', 'log10'),
+                          _buildScientificButton('LOG₂₅', 'log25'),
+                        ],
                       ),
                     ),
-                ],
+                    const SizedBox(height: 20),
+                    if (!premiumManager.isPremium)
+                      ElevatedButton(
+                        onPressed: isWatchingAd ? null : _watchRewardedAd,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to Unlock Scientific Functions"),
+                      ),
+                    if (premiumManager.isPremium)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          "Premium Active!\nTime remaining: ${premiumManager.remaining.inMinutes.remainder(60).toString().padLeft(2,'0')}:${(premiumManager.remaining.inSeconds.remainder(60)).toString().padLeft(2,'0')}",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
