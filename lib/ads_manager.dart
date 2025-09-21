@@ -17,22 +17,193 @@ class AdsManager {
 
   bool get isInterstitialReady => interstitialAd != null;
 
+  // Ad Unit IDs - Replace with your actual IDs
+  static const String topBannerAdId = 'ca-app-pub-your-top-banner-id/1234567890';
+  static const String bottomBannerAdId = 'ca-app-pub-your-bottom-banner-id/1234567890';
+  static const String rewardedAdId = 'ca-app-pub-your-rewarded-id/1234567890';
+  static const String interstitialAdId = 'ca-app-pub-your-interstitial-id/1234567890';
   static const String appOpenAdIdAndroid = 'ca-app-pub-your-android-app-open-id/1234567890';
   static const String appOpenAdIdIOS = 'ca-app-pub-your-ios-app-open-id/1234567890';
-  
+
   DateTime? _lastAppOpenAdShownTime;
   bool _isAppOpenAdLoading = false;
 
-  String _getAppOpenAdUnitId() {
+  // Helper method to get test ad unit IDs in debug mode
+  String _getAdUnitId(String realId, String testId) {
     if (kDebugMode) {
-      return "ca-app-pub-3940256099942544/3419835294";
+      return testId;
     } else {
-      if (Platform.isAndroid) return appOpenAdIdAndroid;
-      if (Platform.isIOS) return appOpenAdIdIOS;
-      return "ca-app-pub-3940256099942544/3419835294";
+      return realId;
     }
   }
 
+  String _getAppOpenAdUnitId() {
+    return _getAdUnitId(
+      Platform.isAndroid ? appOpenAdIdAndroid : appOpenAdIdIOS,
+      "ca-app-pub-3940256099942544/3419835294"
+    );
+  }
+
+  String _getTopBannerAdUnitId() {
+    return _getAdUnitId(topBannerAdId, "ca-app-pub-3940256099942544/6300978111");
+  }
+
+  String _getBottomBannerAdUnitId() {
+    return _getAdUnitId(bottomBannerAdId, "ca-app-pub-3940256099942544/6300978111");
+  }
+
+  String _getRewardedAdUnitId() {
+    return _getAdUnitId(rewardedAdId, "ca-app-pub-3940256099942544/5224354917");
+  }
+
+  String _getInterstitialAdUnitId() {
+    return _getAdUnitId(interstitialAdId, "ca-app-pub-3940256099942544/1033173712");
+  }
+
+  // BANNER ADS
+  Future<void> loadTopBanner({VoidCallback? onLoaded}) async {
+    try {
+      topBanner = BannerAd(
+        size: AdSize.banner,
+        adUnitId: _getTopBannerAdUnitId(),
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            print('✅ Top banner ad loaded');
+            onLoaded?.call();
+            UserActivityLogger.logUserActivity('ad_loaded', 'banner_top', '');
+          },
+          onAdFailedToLoad: (ad, error) {
+            print('❌ Failed to load top banner: $error');
+            topBanner = null;
+            Future.delayed(const Duration(seconds: 30), () => loadTopBanner(onLoaded: onLoaded));
+          },
+        ),
+      );
+      await topBanner!.load();
+    } catch (e) {
+      print('❌ Error loading top banner: $e');
+    }
+  }
+
+  Future<void> loadBottomBanner({VoidCallback? onLoaded}) async {
+    try {
+      bottomBanner = BannerAd(
+        size: AdSize.banner,
+        adUnitId: _getBottomBannerAdUnitId(),
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            print('✅ Bottom banner ad loaded');
+            onLoaded?.call();
+            UserActivityLogger.logUserActivity('ad_loaded', 'banner_bottom', '');
+          },
+          onAdFailedToLoad: (ad, error) {
+            print('❌ Failed to load bottom banner: $error');
+            bottomBanner = null;
+            Future.delayed(const Duration(seconds: 30), () => loadBottomBanner(onLoaded: onLoaded));
+          },
+        ),
+      );
+      await bottomBanner!.load();
+    } catch (e) {
+      print('❌ Error loading bottom banner: $e');
+    }
+  }
+
+  // REWARDED AD
+  Future<void> loadRewardedAd({Function(RewardedAd)? onLoaded}) async {
+    try {
+      await RewardedAd.load(
+        adUnitId: _getRewardedAdUnitId(),
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (ad) {
+            rewardedAd = ad;
+            print('✅ Rewarded ad loaded');
+            onLoaded?.call(ad);
+            UserActivityLogger.logUserActivity('ad_loaded', 'rewarded', '');
+          },
+          onAdFailedToLoad: (error) {
+            print('❌ Failed to load rewarded ad: $error');
+            rewardedAd = null;
+            Future.delayed(const Duration(seconds: 30), () => loadRewardedAd(onLoaded: onLoaded));
+          },
+        ),
+      );
+    } catch (e) {
+      print('❌ Error loading rewarded ad: $e');
+    }
+  }
+
+  Future<void> showRewardedAd(RewardedAd ad, PremiumManager premiumManager) async {
+    try {
+      await ad.show(onUserEarnedReward: (ad, reward) {
+        print('🎉 User earned reward: ${reward.amount} ${reward.type}');
+        premiumManager.addPremiumMinutes(5); // Add 5 minutes premium
+        UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'completed');
+        DeveloperAnalytics.trackAdEvent('completed', 'rewarded', 'rewarded_ad');
+      });
+    } catch (e) {
+      print('❌ Error showing rewarded ad: $e');
+    }
+  }
+
+  // INTERSTITIAL AD
+  Future<void> loadInterstitial() async {
+    try {
+      await InterstitialAd.load(
+        adUnitId: _getInterstitialAdUnitId(),
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            interstitialAd = ad;
+            print('✅ Interstitial ad loaded');
+            UserActivityLogger.logUserActivity('ad_loaded', 'interstitial', '');
+            
+            ad.fullScreenContentCallback = FullScreenContentCallback(
+              onAdDismissedFullScreenContent: (ad) {
+                print('📤 Interstitial dismissed');
+                ad.dispose();
+                interstitialAd = null;
+                Future.delayed(const Duration(seconds: 5), loadInterstitial);
+              },
+              onAdFailedToShowFullScreenContent: (ad, error) {
+                print('❌ Failed to show interstitial: $error');
+                ad.dispose();
+                interstitialAd = null;
+                Future.delayed(const Duration(seconds: 10), loadInterstitial);
+              },
+            );
+          },
+          onAdFailedToLoad: (error) {
+            print('❌ Failed to load interstitial: $error');
+            interstitialAd = null;
+            Future.delayed(const Duration(seconds: 30), loadInterstitial);
+          },
+        ),
+      );
+    } catch (e) {
+      print('❌ Error loading interstitial: $e');
+    }
+  }
+
+  Future<void> showInterstitial() async {
+    if (interstitialAd != null) {
+      try {
+        await interstitialAd!.show();
+        UserActivityLogger.logUserActivity('ad_watched', 'interstitial', 'shown');
+        DeveloperAnalytics.trackAdEvent('shown', 'interstitial', 'interstitial_ad');
+      } catch (e) {
+        print('❌ Error showing interstitial: $e');
+      }
+    } else {
+      print('⚠️ Interstitial ad not ready');
+      loadInterstitial();
+    }
+  }
+
+  // APP OPEN AD (your existing code)
   void loadAppOpenAd() {
     if (_isAppOpenAdLoading || appOpenAd != null) return;
     
@@ -123,7 +294,21 @@ class AdsManager {
     }
   }
 
-  // ... REST OF YOUR METHODS (banner, rewarded, interstitial) ...
-  // Keep your existing banner, rewarded, and interstitial methods here
-  // They were already correct in the previous version
+  // DISPOSE ALL ADS
+  void disposeAll() {
+    topBanner?.dispose();
+    bottomBanner?.dispose();
+    rewardedAd?.dispose();
+    interstitialAd?.dispose();
+    appOpenAd?.dispose();
+    
+    topBanner = null;
+    bottomBanner = null;
+    rewardedAd = null;
+    interstitialAd = null;
+    appOpenAd = null;
+    isAppOpenAdLoaded = false;
+    
+    print('🗑️ All ads disposed');
+  }
 }
