@@ -140,7 +140,10 @@ class AdsManager {
     try {
       await ad.show(onUserEarnedReward: (ad, reward) {
         print('🎉 User earned reward: ${reward.amount} ${reward.type}');
-        premiumManager.addPremiumMinutes(5); // Add 5 minutes premium
+        
+        // FIXED: Use unlockPremium with 1 hour instead of non-existent addPremiumMinutes
+        premiumManager.unlockPremium(hours: 1); // Give 1 hour premium
+        
         UserActivityLogger.logUserActivity('ad_watched', 'rewarded', 'completed');
         DeveloperAnalytics.trackAdEvent('completed', 'rewarded', 'rewarded_ad');
       });
@@ -203,7 +206,7 @@ class AdsManager {
     }
   }
 
-  // APP OPEN AD (your existing code)
+  // APP OPEN AD
   void loadAppOpenAd() {
     if (_isAppOpenAdLoading || appOpenAd != null) return;
     
