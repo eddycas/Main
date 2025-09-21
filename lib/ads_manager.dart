@@ -157,7 +157,7 @@ class AdsManager {
             print('✅ Interstitial ad loaded');
             UserActivityLogger.logUserActivity('ad_loaded', 'interstitial', '');
             
-            ad.fullScreenContentCallback: FullScreenContentCallback(
+            ad.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
                 print('📤 Interstitial dismissed');
                 ad.dispose();
