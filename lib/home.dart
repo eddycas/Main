@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'dart:math';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:uint8_list';
+import 'dart:typed_data'; // ← CORRECTED IMPORT
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -404,393 +404,348 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       await file.writeAsBytes(encryptedPdfData);
 
       // Schedule file deletion after 1 hour
-          // Schedule file deletion after 1 hour
-    Future.delayed(const Duration(hours: 1), () {
-      file.delete().catchError((_) {});
-    });
+      Future.delayed(const Duration(hours: 1), () {
+        file.delete().catchError((_) {});
+      });
 
-    return file;
-  } catch (e) {
-    print('Error creating encrypted PDF: $e');
-    rethrow;
+      return file;
+    } catch (e) {
+      print('Error creating encrypted PDF: $e');
+      rethrow;
+    }
   }
-}
 
-void _exportPdfReport() async {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Generating AES-256 encrypted report...')),
-  );
-
-  final File encryptedFile;
-  try {
-    encryptedFile = await _createPasswordProtectedPdf();
-  } catch (e) {
+  void _exportPdfReport() async {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error generating encrypted file: $e')),
+      const SnackBar(content: Text('Generating AES-256 encrypted report...')),
     );
-    return;
-  }
 
-  // Show the dialog explaining the encryption
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('AES-256 Encrypted Report'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Your report has been encrypted with AES-256 encryption.'),
-            const SizedBox(height: 16),
-            const Text('File Information:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('• File format: AES-256 encrypted binary ($_encryptedFileExtension)'),
-            const Text('• Encryption: AES-256 CBC mode'),
-            const Text('• Auto-delete: After 1 hour'),
-            const SizedBox(height: 16),
-            const Text(
-              'Note: Use the "Decrypt Report" feature to view this file.',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
+    final File encryptedFile;
+    try {
+      encryptedFile = await _createPasswordProtectedPdf();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating encrypted file: $e')),
       );
-    },
-  );
+      return;
+    }
 
-  // Share the encrypted .aes file
-  try {
-    await Share.shareXFiles([XFile(encryptedFile.path)],
-        text: 'My QuickCalc Activity Report - AES-256 Encrypted\n'
-              'File extension: $_encryptedFileExtension\n'
-              'Use the QuickCalc app to decrypt this file',
-        subject: 'QuickCalc AES-256 Encrypted Report');
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error sharing file: $e')),
-    );
-  }
-
-  // Trigger interstitial after export, but only once per hour
-  final now = DateTime.now();
-  if (_lastExportAdTime == null || now.difference(_lastExportAdTime!) > const Duration(hours: 1)) {
-    _lastExportAdTime = now;
-    _maybeShowInterstitial();
-  }
-}
-
-Future<void> _decryptAndViewReport() async {
-  try {
-    // Let user pick ANY file - you know which .aes file to select!
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.any,  // Changed to FileType.any
-      dialogTitle: 'Select your encrypted .aes file',
-      // REMOVED the allowedExtensions line completely
-    );
-
-    if (result == null || result.files.isEmpty) return;
-
-    final pickedFile = result.files.first;
-    final encryptedFile = File(pickedFile.path!);
-    final encryptedData = await encryptedFile.readAsBytes();
-
-    // Show password dialog
-    final passwordController = TextEditingController();
-    final password = await showDialog<String>(
+    // Show the dialog explaining the encryption
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Enter Password'),
-          content: TextField(
-            controller: passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(
-              hintText: 'Enter the encryption password',
-              border: OutlineInputBorder(),
-            ),
+          title: const Text('AES-256 Encrypted Report'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Your report has been encrypted with AES-256 encryption.'),
+              const SizedBox(height: 16),
+              const Text('File Information:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('• File format: AES-256 encrypted binary ($_encryptedFileExtension)'),
+              const Text('• Encryption: AES-256 CBC mode'),
+              const Text('• Auto-delete: After 1 hour'),
+              const SizedBox(height: 16),
+              const Text(
+                'Note: Use the "Decrypt Report" feature to view this file.',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ],
           ),
-          actions: [
+          actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(passwordController.text),
-              child: const Text('Decrypt'),
+              child: const Text('OK'),
             ),
           ],
         );
       },
     );
 
-    if (password == null || password.isEmpty) return;
-
-    // Decrypt the file
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Decrypting...')),
-    );
-
-    final decryptedData = _aesDecrypt(encryptedData, password);
-
-    // Validate that the decrypted data is a valid PDF
-    if (!_isValidPdf(decryptedData)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Decryption failed: File is not a valid PDF')),
-      );
-      return;
-    }
-
-    // Save decrypted PDF temporarily with .pdf extension
-    final tempDir = await getTemporaryDirectory();
-    final decryptedFile = File('${tempDir.path}/decrypted_report_${DateTime.now().millisecondsSinceEpoch}$_pdfFileExtension');
-    await decryptedFile.writeAsBytes(decryptedData);
-
-    // Schedule file deletion after 1 hour
-    Future.delayed(const Duration(hours: 1), () {
-      decryptedFile.delete().catchError((_) {});
-    });
-
-    // Open the PDF
-    final openResult = await OpenFile.open(decryptedFile.path);
-    
-    if (openResult.type != ResultType.done) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to open the decrypted file')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report decrypted successfully!')),
-      );
-    }
-
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Decryption failed: ${e.toString().replaceAll('Exception: ', '')}')),
-    );
-  }
-}
-
-void _clearUserActivity() async {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Clear Activity Data'),
-        content: const Text('This will delete all your activity history. This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              UserActivityLogger.clearUserActivityData();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Activity data cleared')),
-              );
-            },
-            child: const Text('Clear', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-void _handleScientificFunction(String function) {
-  setState(() {
+    // Share the encrypted .aes file
     try {
-      double currentValue = double.tryParse(result) ?? 0;
-      double newValue = 0;
+      await Share.shareXFiles([XFile(encryptedFile.path)],
+          text: 'My QuickCalc Activity Report - AES-256 Encrypted\n'
+                'File extension: $_encryptedFileExtension\n'
+                'Use the QuickCalc app to decrypt this file',
+          subject: 'QuickCalc AES-256 Encrypted Report');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing file: $e')),
+      );
+    }
 
-      switch (function) {
-        case 'SIN':
-          newValue = sin(currentValue * pi / 180);
-          break;
-        case 'COS':
-          newValue = cos(currentValue * pi / 180);
-          break;
-        case 'TAN':
-          newValue = tan(currentValue * pi / 180);
-          break;
-        case 'LOG2':
-          newValue = log(currentValue) / log(2);
-          break;
-        case 'LOG10':
-          newValue = log(currentValue) / log(10);
-          break;
-        case 'LOG25':
-          newValue = log(currentValue) / log(25);
-          break;
+    // Trigger interstitial after export, but only once per hour
+    final now = DateTime.now();
+    if (_lastExportAdTime == null || now.difference(_lastExportAdTime!) > const Duration(hours: 1)) {
+      _lastExportAdTime = now;
+      _maybeShowInterstitial();
+    }
+  }
+
+  Future<void> _decryptAndViewReport() async {
+    try {
+      // Let user pick ANY file - you know which .aes file to select!
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        dialogTitle: 'Select your encrypted .aes file',
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final pickedFile = result.files.first;
+      final encryptedFile = File(pickedFile.path!);
+      final encryptedData = await encryptedFile.readAsBytes();
+
+      // Show password dialog
+      final passwordController = TextEditingController();
+      final password = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Enter Password'),
+            content: TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: 'Enter the encryption password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(passwordController.text),
+                child: const Text('Decrypt'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (password == null || password.isEmpty) return;
+
+      // Decrypt the file
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Decrypting...')),
+      );
+
+      final decryptedData = _aesDecrypt(encryptedData, password);
+
+      // Validate that the decrypted data is a valid PDF
+      if (!_isValidPdf(decryptedData)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Decryption failed: File is not a valid PDF')),
+        );
+        return;
       }
 
-      result = newValue.toStringAsFixed(6);
-      UserActivityLogger.logUserActivity('scientific', function, result);
+      // Save decrypted PDF temporarily with .pdf extension
+      final tempDir = await getTemporaryDirectory();
+      final decryptedFile = File('${tempDir.path}/decrypted_report_${DateTime.now().millisecondsSinceEpoch}$_pdfFileExtension');
+      await decryptedFile.writeAsBytes(decryptedData);
+
+      // Schedule file deletion after 1 hour
+      Future.delayed(const Duration(hours: 1), () {
+        decryptedFile.delete().catchError((_) {});
+      });
+
+      // Open the PDF
+      final openResult = await OpenFile.open(decryptedFile.path);
+      
+      if (openResult.type != ResultType.done) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to open the decrypted file')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report decrypted successfully!')),
+        );
+      }
+
     } catch (e) {
-      result = "Error";
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Decryption failed: ${e.toString().replaceAll('Exception: ', '')}')),
+      );
     }
-  });
-}
+  }
 
-@override
-void dispose() {
-  WidgetsBinding.instance.removeObserver(this);
-  premiumManager.dispose();
-  adsManager.disposeAll();
-  saveHistory();
-  super.dispose();
-}
-
-@override
-Widget build(BuildContext context) {
-  final screenWidth = MediaQuery.of(context).size.width;
-
-  return Scaffold(
-    backgroundColor: widget.themeMode == ThemeMode.light ? Colors.white : Colors.black,
-    appBar: AppBar(
-      title: const Text("QuickCalc"),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () {
-            setState(() => leftPanelOpen = !leftPanelOpen);
-            _panelInteractionCounter++;
-            if (_panelInteractionCounter >= 10) {
-              _maybeShowInterstitial();
-            }
-          },
-          tooltip: 'History',
-        ),
-        IconButton(
-          icon: const Icon(Icons.description),
-          onPressed: _exportPdfReport,
-          tooltip: 'Export Encrypted Report',
-        ),
-        IconButton(
-          icon: const Icon(Icons.lock_open),
-          onPressed: _decryptAndViewReport,
-          tooltip: 'Decrypt Report',
-        ),
-        IconButton(
-          icon: const Icon(Icons.color_lens),
-          onPressed: widget.toggleTheme,
-          tooltip: 'Toggle theme',
-        ),
-        IconButton(
-          icon: const Icon(Icons.star),
-          onPressed: () {
-            setState(() => rightPanelOpen = !rightPanelOpen);
-            _panelInteractionCounter++;
-            if (_panelInteractionCounter >= 10) {
-              _maybeShowInterstitial();
-            }
-          },
-          tooltip: 'Premium',
-        ),
-      ],
-    ),
-    body: Stack(
-      children: [
-        Column(
-          children: [
-            if (isTopBannerLoaded)
-              SizedBox(height: 50, child: AdWidget(ad: adsManager.topBanner!)),
-            Container(
-                            alignment: Alignment.centerRight,
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                expression,
-                style: TextStyle(
-                  fontSize: 24,
-                  color: widget.themeMode == ThemeMode.light ? Colors.grey : Colors.grey[400],
-                ),
-              ),
+  void _clearUserActivity() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear Activity Data'),
+          content: const Text('This will delete all your activity history. This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  result,
-                  style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: widget.themeMode == ThemeMode.light ? Colors.black : Colors.white),
-                ),
-              ),
+            TextButton(
+              onPressed: () {
+                UserActivityLogger.clearUserActivityData();
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Activity data cleared')),
+                );
+              },
+              child: const Text('Clear', style: TextStyle(color: Colors.red)),
             ),
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.35,
-              child: CalculatorKeypad(
-                onPressed: (btn) => setState(() => CalculatorLogic.handleButton(btn, this, onCalculationComplete: () {
-                  _calculationCounter++;
-                  if (_calculationCounter >= 10) {
-                    _maybeShowInterstitial();
-                  }
-                })),
-                themeMode: widget.themeMode,
-              ),
-            ),
-            if (isBottomBannerLoaded)
-              SizedBox(height: 50, child: AdWidget(ad: adsManager.bottomBanner!)),
           ],
-        ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          left: leftPanelOpen ? 0 : -screenWidth * 0.7,
-          top: 0,
-          bottom: 0,
-          width: screenWidth * 0.7,
-          child: Container(
-            color: Theme.of(context).colorScheme.surface,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("History", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => leftPanelOpen = false)),
-                  ],
-                ),
-                const Divider(),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: history.length,
-                    itemBuilder: (context, index) => ListTile(title: Text(history[index])),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: isWatchingAd ? null : _watchRewardedAd,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to +30 History"),
-                ),
-              ],
-            ),
+        );
+      },
+    );
+  }
+
+  void _handleScientificFunction(String function) {
+    setState(() {
+      try {
+        double currentValue = double.tryParse(result) ?? 0;
+        double newValue = 0;
+
+        switch (function) {
+          case 'SIN':
+            newValue = sin(currentValue * pi / 180);
+            break;
+          case 'COS':
+            newValue = cos(currentValue * pi / 180);
+            break;
+          case 'TAN':
+            newValue = tan(currentValue * pi / 180);
+            break;
+          case 'LOG2':
+            newValue = log(currentValue) / log(2);
+            break;
+          case 'LOG10':
+            newValue = log(currentValue) / log(10);
+            break;
+          case 'LOG25':
+            newValue = log(currentValue) / log(25);
+            break;
+        }
+
+        result = newValue.toStringAsFixed(6);
+        UserActivityLogger.logUserActivity('scientific', function, result);
+      } catch (e) {
+        result = "Error";
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    premiumManager.dispose();
+    adsManager.disposeAll();
+    saveHistory();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      backgroundColor: widget.themeMode == ThemeMode.light ? Colors.white : Colors.black,
+      appBar: AppBar(
+        title: const Text("QuickCalc"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              setState(() => leftPanelOpen = !leftPanelOpen);
+              _panelInteractionCounter++;
+              if (_panelInteractionCounter >= 10) {
+                _maybeShowInterstitial();
+              }
+            },
+            tooltip: 'History',
           ),
-        ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          right: rightPanelOpen ? 0 : -screenWidth * 0.6,
-          top: 0,
-          bottom: 0,
-          width: screenWidth * 0.6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+          IconButton(
+            icon: const Icon(Icons.description),
+            onPressed: _exportPdfReport,
+            tooltip: 'Export Encrypted Report',
+          ),
+          IconButton(
+            icon: const Icon(Icons.lock_open),
+            onPressed: _decryptAndViewReport,
+            tooltip: 'Decrypt Report',
+          ),
+                      icon: const Icon(Icons.color_lens),
+            onPressed: widget.toggleTheme,
+            tooltip: 'Toggle theme',
+          ),
+          IconButton(
+            icon: const Icon(Icons.star),
+            onPressed: () {
+              setState(() => rightPanelOpen = !rightPanelOpen);
+              _panelInteractionCounter++;
+              if (_panelInteractionCounter >= 10) {
+                _maybeShowInterstitial();
+              }
+            },
+            tooltip: 'Premium',
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              if (isTopBannerLoaded)
+                SizedBox(height: 50, child: AdWidget(ad: adsManager.topBanner!)),
+              Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  expression,
+                  style: TextStyle(
+                    fontSize: 24,
+                    color: widget.themeMode == ThemeMode.light ? Colors.grey : Colors.grey[400],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    result,
+                    style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: widget.themeMode == ThemeMode.light ? Colors.black : Colors.white),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.35,
+                child: CalculatorKeypad(
+                  onPressed: (btn) => setState(() => CalculatorLogic.handleButton(btn, this, onCalculationComplete: () {
+                    _calculationCounter++;
+                    if (_calculationCounter >= 10) {
+                      _maybeShowInterstitial();
+                    }
+                  })),
+                  themeMode: widget.themeMode,
+                ),
+              ),
+              if (isBottomBannerLoaded)
+                SizedBox(height: 50, child: AdWidget(ad: adsManager.bottomBanner!)),
+            ],
+          ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            left: leftPanelOpen ? 0 : -screenWidth * 0.7,
+            top: 0,
+            bottom: 0,
+            width: screenWidth * 0.7,
             child: Container(
               color: Theme.of(context).colorScheme.surface,
               padding: const EdgeInsets.all(16),
@@ -799,8 +754,50 @@ Widget build(BuildContext context) {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Scientific Functions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => rightPanelOpen = false)),
+                      const Text("History", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => leftPanelOpen = false)),
+                    ],
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: history.length,
+                      itemBuilder: (context, index) => ListTile(title: Text(history[index])),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: isWatchingAd ? null : _watchRewardedAd,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isWatchingAd ? Colors.grey : Colors.amber,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(isWatchingAd ? "Please wait..." : "Watch Ad to +30 History"),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            right: rightPanelOpen ? 0 : -screenWidth * 0.6,
+            top: 0,
+            bottom: 0,
+            width: screenWidth * 0.6,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                color: Theme.of(context).colorScheme.surface,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Scientific Functions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => rightPanelOpen = false)),
                     ],
                   ),
                   const Divider(),
@@ -844,28 +841,28 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-Widget _buildScientificButton(String label, String function) {
-  bool isEnabled = premiumManager.isPremium;
-  return ElevatedButton(
-    onPressed: isEnabled
-        ? () => _handleScientificFunction(function.toUpperCase())
-        : null,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: isEnabled ? Colors.blueAccent : Colors.grey,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    child: Text(
-      label,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      textAlign: TextAlign.center,
-    ),
-  );
+  Widget _buildScientificButton(String label, String function) {
+    bool isEnabled = premiumManager.isPremium;
+    return ElevatedButton(
+      onPressed: isEnabled
+          ? () => _handleScientificFunction(function.toUpperCase())
+          : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isEnabled ? Colors.blueAccent : Colors.grey,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
 }
