@@ -72,6 +72,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     adsManager = AdsManager();
     _loadHistory();
     premiumManager.loadPremium();
+    _loadThemePreference(); // Load saved theme preference
 
     // Load all ads
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
@@ -84,15 +85,60 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     });
     adsManager.loadInterstitial();
 
-    // Load app open ad
+    // Load app open ad with 30-minute cooldown logic
     print('🔄 Scheduling App Open Ad load in 2 seconds...');
     Future.delayed(const Duration(seconds: 2), () {
       print('🔄 Loading App Open Ad now...');
-      adsManager.loadAppOpenAd();
+      _loadAppOpenAdWithCooldown();
     });
 
     // Clean up old temporary files on app start
     _cleanupOldFiles();
+  }
+
+  // ==================== THEME PERSISTENCE ====================
+  Future<void> _loadThemePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedTheme = prefs.getString('theme_mode') ?? 'light';
+    
+    // If saved theme doesn't match current theme, toggle it
+    if ((savedTheme == 'dark' && widget.themeMode == ThemeMode.light) ||
+        (savedTheme == 'light' && widget.themeMode == ThemeMode.dark)) {
+      // Use a small delay to ensure build context is ready
+      Future.delayed(const Duration(milliseconds: 100), () {
+        widget.toggleTheme();
+      });
+    }
+  }
+
+  Future<void> _saveThemePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentTheme = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
+    await prefs.setString('theme_mode', currentTheme);
+    print('💾 Theme preference saved: $currentTheme');
+  }
+
+  // ==================== APP OPEN AD WITH 30-MINUTE COOLDOWN ====================
+  Future<void> _loadAppOpenAdWithCooldown() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastAdShownMillis = prefs.getInt('last_app_open_ad_time') ?? 0;
+    final lastAdShownTime = DateTime.fromMillisecondsSinceEpoch(lastAdShownMillis);
+    final now = DateTime.now();
+    final cooldownDuration = const Duration(minutes: 30); // 30-minute cooldown
+
+    if (lastAdShownMillis == 0 || now.difference(lastAdShownTime) > cooldownDuration) {
+      print('🔄 Cooldown passed - loading App Open Ad');
+      adsManager.loadAppOpenAd();
+    } else {
+      final timeRemaining = cooldownDuration - now.difference(lastAdShownTime);
+      print('⏰ App Open Ad cooldown active. Time remaining: ${timeRemaining.inMinutes}m ${timeRemaining.inSeconds.remainder(60)}s');
+    }
+  }
+
+  Future<void> _updateAppOpenAdShownTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_app_open_ad_time', DateTime.now().millisecondsSinceEpoch);
+    print('⏰ App Open Ad shown time recorded - 30-minute cooldown started');
   }
 
   // ==================== FILE MANAGEMENT ====================
@@ -121,9 +167,13 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
   void didChangeAppLifecycleState(AppLifecycleState state) {
     print('🔍 Lifecycle state changed: $state');
     if (state == AppLifecycleState.resumed) {
-      print('🚀 App resumed - attempting to show App Open Ad');
+      print('🚀 App resumed - checking App Open Ad cooldown');
       Future.delayed(const Duration(milliseconds: 1000), () {
-        adsManager.showAppOpenAd();
+        _loadAppOpenAdWithCooldown();
+        // Show app open ad if available and cooldown passed
+        Future.delayed(const Duration(milliseconds: 500), () {
+          adsManager.showAppOpenAd();
+        });
       });
     }
   }
@@ -507,6 +557,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     premiumManager.dispose();
     adsManager.disposeAll();
     saveHistory();
+    _saveThemePreference(); // Save theme preference when app closes
     super.dispose();
   }
 
@@ -522,30 +573,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
       appBar: AppBar(
         title: const Text("QuickCalc"),
         actions: [
-          // TEMPORARY APP OPEN AD TEST BUTTON
-          IconButton(
-            icon: const Icon(Icons.ad_units),
-            onPressed: () {
-              print('🔄 Manual App Open Ad trigger');
-              print('📱 App Open Ad loaded: ${adsManager.isAppOpenAdLoaded}');
-              if (adsManager.isAppOpenAdLoaded) {
-                print('✅ Showing App Open Ad...');
-                adsManager.showAppOpenAd();
-              } else {
-                print('❌ App Open Ad not loaded yet');
-                print('🔄 Loading App Open Ad now...');
-                adsManager.loadAppOpenAd();
-                Future.delayed(const Duration(seconds: 3), () {
-                  if (adsManager.isAppOpenAdLoaded) {
-                    adsManager.showAppOpenAd();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('App Open Ad failed to load')));
-                  }
-                });
-              }
-            },
-            tooltip: 'Test App Open Ad',
-          ),
+          // REMOVED THE TEST APP OPEN AD BUTTON
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
@@ -567,7 +595,10 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           ),
           IconButton(
             icon: const Icon(Icons.color_lens),
-            onPressed: widget.toggleTheme,
+            onPressed: () {
+              widget.toggleTheme();
+              _saveThemePreference(); // Save theme preference when toggled
+            },
             tooltip: 'Toggle theme',
           ),
           IconButton(
