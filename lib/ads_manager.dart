@@ -22,9 +22,9 @@ class AdsManager {
   static const String bottomBannerAdId = 'ca-app-pub-3940256099942544/6300978111';
   static const String rewardedAdId = 'ca-app-pub-3940256099942544/5224354917';
   static const String interstitialAdId = 'ca-app-pub-3940256099942544/1033173712';
-  static const String appOpenAdIdAndroid = 'ca-app-pub-3940256099942544/3419835294';
-  static const String appOpenAdIdIOS = 'ca-app-pub-3940256099942544/3419835294';
-
+  static const String appOpenAdIdAndroid = 'ca-app-pub-3940256099942544/9253755937';
+  static const String appOpenAdIdIOS = 'ca-app-pub-3940256099942544/9253755937';
+  
   DateTime? _lastAppOpenAdShownTime;
   bool _isAppOpenAdLoading = false;
 
