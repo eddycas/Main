@@ -72,7 +72,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     adsManager = AdsManager();
     _loadHistory();
     premiumManager.loadPremium();
-    _loadThemePreference(); // Load saved theme preference
 
     // Load all ads
     adsManager.loadTopBanner(onLoaded: () => setState(() => isTopBannerLoaded = true));
@@ -89,37 +88,15 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     print('🔄 Scheduling App Open Ad load in 2 seconds...');
     Future.delayed(const Duration(seconds: 2), () {
       print('🔄 Loading App Open Ad now...');
-      _loadAppOpenAdWithCooldown();
+      _loadAndShowAppOpenAdWithCooldown();
     });
 
     // Clean up old temporary files on app start
     _cleanupOldFiles();
   }
 
-  // ==================== THEME PERSISTENCE ====================
-  Future<void> _loadThemePreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString('theme_mode') ?? 'light';
-    
-    // If saved theme doesn't match current theme, toggle it
-    if ((savedTheme == 'dark' && widget.themeMode == ThemeMode.light) ||
-        (savedTheme == 'light' && widget.themeMode == ThemeMode.dark)) {
-      // Use a small delay to ensure build context is ready
-      Future.delayed(const Duration(milliseconds: 100), () {
-        widget.toggleTheme();
-      });
-    }
-  }
-
-  Future<void> _saveThemePreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentTheme = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
-    await prefs.setString('theme_mode', currentTheme);
-    print('💾 Theme preference saved: $currentTheme');
-  }
-
   // ==================== APP OPEN AD WITH 30-MINUTE COOLDOWN ====================
-  Future<void> _loadAppOpenAdWithCooldown() async {
+  Future<void> _loadAndShowAppOpenAdWithCooldown() async {
     final prefs = await SharedPreferences.getInstance();
     final lastAdShownMillis = prefs.getInt('last_app_open_ad_time') ?? 0;
     final lastAdShownTime = DateTime.fromMillisecondsSinceEpoch(lastAdShownMillis);
@@ -128,7 +105,16 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
 
     if (lastAdShownMillis == 0 || now.difference(lastAdShownTime) > cooldownDuration) {
       print('🔄 Cooldown passed - loading App Open Ad');
-      adsManager.loadAppOpenAd();
+      
+      // Load and then show the ad
+      adsManager.loadAppOpenAd().then((_) {
+        // Small delay to ensure ad is ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (adsManager.showAppOpenAd()) {
+            _updateAppOpenAdShownTime(); // Update time only when ad is actually shown
+          }
+        });
+      });
     } else {
       final timeRemaining = cooldownDuration - now.difference(lastAdShownTime);
       print('⏰ App Open Ad cooldown active. Time remaining: ${timeRemaining.inMinutes}m ${timeRemaining.inSeconds.remainder(60)}s');
@@ -169,11 +155,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     if (state == AppLifecycleState.resumed) {
       print('🚀 App resumed - checking App Open Ad cooldown');
       Future.delayed(const Duration(milliseconds: 1000), () {
-        _loadAppOpenAdWithCooldown();
-        // Show app open ad if available and cooldown passed
-        Future.delayed(const Duration(milliseconds: 500), () {
-          adsManager.showAppOpenAd();
-        });
+        _loadAndShowAppOpenAdWithCooldown(); // Use the new method
       });
     }
   }
@@ -557,7 +539,6 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     premiumManager.dispose();
     adsManager.disposeAll();
     saveHistory();
-    _saveThemePreference(); // Save theme preference when app closes
     super.dispose();
   }
 
@@ -595,10 +576,7 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
           ),
           IconButton(
             icon: const Icon(Icons.color_lens),
-            onPressed: () {
-              widget.toggleTheme();
-              _saveThemePreference(); // Save theme preference when toggled
-            },
+            onPressed: widget.toggleTheme, // Simplified - theme management is now in parent
             tooltip: 'Toggle theme',
           ),
           IconButton(
