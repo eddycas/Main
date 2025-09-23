@@ -22,9 +22,9 @@ class AdsManager {
   static const String bottomBannerAdId = 'ca-app-pub-3940256099942544/6300978111';
   static const String rewardedAdId = 'ca-app-pub-3940256099942544/5224354917';
   static const String interstitialAdId = 'ca-app-pub-3940256099942544/1033173712';
-  static const String appOpenAdIdAndroid = 'ca-app-pub-3940256099942544/9253755937';
-  static const String appOpenAdIdIOS = 'ca-app-pub-3940256099942544/9253755937';
-  
+  static const String appOpenAdIdAndroid = 'ca-app-pub-3940256099942544/9257395921'; // ✅ CORRECTED
+  static const String appOpenAdIdIOS = 'ca-app-pub-3940256099942544/9257395921'; // ✅ CORRECTED
+
   DateTime? _lastAppOpenAdShownTime;
   bool _isAppOpenAdLoading = false;
 
@@ -36,7 +36,7 @@ class AdsManager {
   String _getAppOpenAdUnitId() {
     return _getAdUnitId(
       Platform.isAndroid ? appOpenAdIdAndroid : appOpenAdIdIOS,
-      "ca-app-pub-3940256099942544/3419835294"
+      "ca-app-pub-3940256099942544/9257395921", // ✅ CORRECTED
     );
   }
 
@@ -139,12 +139,12 @@ class AdsManager {
         
         if (forHistory) {
           // Reward for history panel: Add history slots
-          premiumManager.addHistorySlots(30); // Add 30 history slots
+          premiumManager.addHistorySlots(30);
           UserActivityLogger.logUserActivity('ad_watched', 'rewarded_history', '30_slots_added');
           DeveloperAnalytics.trackAdEvent('completed', 'rewarded', 'history_slots');
         } else {
           // Reward for premium panel: Add premium time
-          premiumManager.unlockPremium(hours: 1); // Give 1 hour premium
+          premiumManager.unlockPremium(hours: 1);
           UserActivityLogger.logUserActivity('ad_watched', 'rewarded_premium', '1_hour_premium');
           DeveloperAnalytics.trackAdEvent('completed', 'rewarded', 'premium_time');
         }
