@@ -106,14 +106,13 @@ class CalculatorHomeState extends State<CalculatorHome> with WidgetsBindingObser
     if (lastAdShownMillis == 0 || now.difference(lastAdShownTime) > cooldownDuration) {
       print('🔄 Cooldown passed - loading App Open Ad');
       
-      // Load and then show the ad
-      adsManager.loadAppOpenAd().then((_) {
-        // Small delay to ensure ad is ready
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (adsManager.showAppOpenAd()) {
-            _updateAppOpenAdShownTime(); // Update time only when ad is actually shown
-          }
-        });
+      // Load the app open ad
+      adsManager.loadAppOpenAd();
+      
+      // Small delay to ensure ad is ready, then show it
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        adsManager.showAppOpenAd();
+        _updateAppOpenAdShownTime(); // Update time when ad is shown
       });
     } else {
       final timeRemaining = cooldownDuration - now.difference(lastAdShownTime);
